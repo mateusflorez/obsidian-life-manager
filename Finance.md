@@ -36,13 +36,25 @@ views:
 > [!info]
 > Clique em **+ Novo mês financeiro** para criar um novo mês usando o template.
 
-```button
-name Novo mês financeiro
-type note(finance/month/<% tp.date.now("YYYY-MM") %>) template
-action new finance month
-templater true
-```
+```meta-bind-button
+label: Novo mês financeiro
+icon: plus
+style: primary
+class: ""
+cssStyle: ""
+backgroundImage: ""
+tooltip: ""
+id: ""
+hidden: false
+actions:
+  - type: templaterCreateNote
+    templateFile: templates/new finance month.md
+    folderPath: finance/2025
+    fileName: month
+    openNote: true
+    openIfAlreadyExists: true
 
+```
 
 ```dataviewjs
 (() => {

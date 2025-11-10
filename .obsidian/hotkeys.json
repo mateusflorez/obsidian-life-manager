@@ -1,0 +1,11 @@
+{
+  "obsidian-meta-bind-plugin:open-button-builder": [
+    {
+      "modifiers": [
+        "Mod",
+        "Shift"
+      ],
+      "key": "P"
+    }
+  ]
+}
