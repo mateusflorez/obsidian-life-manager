@@ -1,24 +1,24 @@
 {
   "main": {
-    "id": "8fdd0a7c2c460a7d",
+    "id": "5324373015726ba8",
     "type": "split",
     "children": [
       {
-        "id": "344ed4ef51cde09f",
+        "id": "4509724f8bf84da7",
         "type": "tabs",
         "children": [
           {
-            "id": "6675bc5d3b597a41",
+            "id": "e7a7b303c61786dc",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Finance.md",
+                "file": "Landing.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Finance"
+              "title": "Landing"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Finance.md",
+                "file": "Landing.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Finance"
+              "title": "Backlinks for Landing"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Finance.md",
+                "file": "Landing.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Finance"
+              "title": "Outgoing links from Landing"
             }
           },
           {
@@ -142,13 +142,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Finance.md",
+                "file": "Landing.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Finance"
+              "title": "Outline of Landing"
             }
           }
         ]
@@ -166,13 +166,23 @@
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "bases:Create new base": false
+      "bases:Create new base": false,
+      "templater-obsidian:Templater": false,
+      "homepage:Open homepage": false
     }
   },
-  "active": "6675bc5d3b597a41",
+  "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
-    "finance/2025/November.md",
     "Finance.md",
+    "finance/month/2025-11.md",
+    "finance/month",
+    "Landing.md",
+    "Templates",
+    "templates/new finance month.md",
+    "Untitled.md",
+    "templates/Finance Month.md",
+    "templates",
+    "finance/2025/November.md",
     "finance/2025",
     "finance/october 2 1/October.md",
     "finance/october 2 1",

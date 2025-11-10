@@ -1,3 +1,7 @@
 [
-  "dataview"
+  "dataview",
+  "buttons",
+  "templater-obsidian",
+  "obsidian-meta-bind-plugin",
+  "homepage"
 ]

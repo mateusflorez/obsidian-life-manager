@@ -33,6 +33,17 @@ views:
 
 # Finance
 
+> [!info]
+> Clique em **+ Novo mês financeiro** para criar um novo mês usando o template.
+
+```button
+name Novo mês financeiro
+type note(finance/month/<% tp.date.now("YYYY-MM") %>) template
+action new finance month
+templater true
+```
+
+
 ```dataviewjs
 (() => {
   const pages = dv.pages('"finance"').where(p => {
@@ -98,7 +109,7 @@ views:
       monthData[month] = { exp, rec, res: rec - exp };
     }
 
-    const months = Object.keys(monthData).sort((a, b) => 
+    const months = Object.keys(monthData).sort((a, b) =>
       new Date(`${b} 1, ${year}`) - new Date(`${a} 1, ${year}`)
     );
 
@@ -231,7 +242,7 @@ views:
       }
     }
 
-    const months = Object.keys(monthMap).sort((a, b) => 
+    const months = Object.keys(monthMap).sort((a, b) =>
       new Date(`${b} 1, ${year}`) - new Date(`${a} 1, ${year}`)
     );
 
