@@ -83,6 +83,11 @@ git push origin main              # Publish updates
 - The hub auto-creates the `books/` folder if missing and mirrors the bilingual strings from `config/settings.md`.
 - Logging any chapter (book card or standalone form) awards 20 XP by updating `profile/stats.md`.
 
+### Achievements (`Achievements.md`)
+- Consolidates milestone cards for chapters/books, investments, tasks, training, and XP-based levels. Each card progresses through color tiers (gray → green → blue → purple → orange) with a mini progress bar until the goal is completed.
+- Reads live data from the source modules: total chapters read (books + standalone entries), cumulative positive investment deltas, currently completed tasks (per section + cycle) from `Todo.md`, and total training sessions from `training/exercises/*`.
+- Currency targets (R$/USD) adapt to `config/settings.md`. No manual input is required—open the note to visualize current status, including the top summary card that shows total achievements completed.
+
 ### Config & Profile (`Config.md`, `config/settings.md`, `profile/stats.md`)
 - `Config.md` exposes language and currency dropdowns that update `config/settings.md` frontmatter via the Obsidian API.
 - `profile/stats.md` is a YAML-ish bullet list (`- name:`, `- xp:`). Every automation expects both keys; xp mutations append/update the `- xp:` line.
@@ -100,6 +105,7 @@ git push origin main              # Publish updates
 ├── Investments.md            # Investment tracker and chart
 ├── Training.md               # Training dashboard + exercise creator
 ├── Books.md                  # Reading hub + chapter logger
+├── Achievements.md           # Cross-module milestone tracker
 ├── Config.md                 # Language & currency controls
 ├── README.md                 # High-level usage primer
 ├── books/                    # Book notes + standalone chapter logs (gitignored)
@@ -126,6 +132,7 @@ git push origin main              # Publish updates
 - Book chapters: `- chapter:: 3 finished:: 2025-05-22T13:00:00` entries appended under `## Chapters` inside each `books/<title>.md`.
 - Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
 - Each logged chapter (any method) increments XP by 20.
+- Achievements are derived data; no manual edits needed—keep the source modules consistent so totals remain accurate.
 
 ### Localization & Currency
 - `config/settings.md` frontmatter controls UI strings (en/pt) and currency formatting (BRL/USD). Always mutate via `Config.md` to keep observers in sync.
@@ -153,7 +160,9 @@ git push origin main              # Publish updates
 5. **Log Books**
    - Use the top form in `Books.md` to register a title (name + total chapters). The hub writes the note to `books/`.
    - Click **Ler capítulo/Read chapter** on a card to append the next chapter line; use “Registrar capítulo avulso” for quick logs that only need book + chapter.
-6. **Adjust UI Preferences**
+6. **Review Achievements**
+   - Open `Achievements.md` to see milestone cards for books, investments, tasks, and training. Colors shift from gray → green → blue → purple → orange as you progress.
+7. **Adjust UI Preferences**
    - Open `Config.md` and change language/currency; the script writes to `config/settings.md` and prompts you to reload notes.
 
 ## Dependencies & External Services

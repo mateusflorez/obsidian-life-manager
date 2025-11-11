@@ -10,6 +10,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
 - `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
 - `Training.md` hub + `training/exercises/`: workout dashboard with exercise creator, per-exercise session lists, calendar heatmap, and inline charts.
 - `Books.md` + `books/`: reading tracker with per-book progress bars and standalone chapter logs.
+- `Achievements.md`: milestone cards that summarize progress across modules (books, finance, tasks, training).
 - `Config.md` + `config/settings.md`: UI preferences (currently language selection) that cascade through the dashboards.
 - `profile/`: stores `stats.md` (user data) and `pfp.*` (avatar rendered on the Landing page).
 - `templates/`: Templater files used by the Meta Bind buttons (new finance month, new investment, etc.).
@@ -50,7 +51,12 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
    - Open `Config.md` to choose the interface language (English or Portuguese) and preferred currency (Real or Dollar). These options only change UI labels/symbols—logic and filenames stay the same.
    - Preferences are stored in `config/settings.md`, so they sync across devices with the vault.
 
-8. **Templates**
+8. **Achievements**
+   - Visit `Achievements.md` to see milestone cards (gray → green → blue → purple → orange) for chapters read, total invested, tasks completed, training sessions, and XP levels—each card shows a trophy and progress bar or “Concluído”.
+   - A summary card at the top displays overall achievement completion, so you instantly know how many milestones you’ve finished.
+   - Progress updates automatically from the source modules, so keep logging data normally.
+
+9. **Templates**
    - `templates/new finance month.md`: default structure for Expenses/Income.
    - `templates/new training exercise.md`: skeleton for every exercise note (volume chart included).
    - Additional templates can be triggered via Meta Bind for new investments or other workflows.
