@@ -1,9 +1,9 @@
 # <% tp.file.title %> <% moment().format('YYYY') %>
 
-## Despesas
+## Expenses
 
 expense:: 0 #title
 
-## Receitas
+## Income
 
 receipt:: 0 #title

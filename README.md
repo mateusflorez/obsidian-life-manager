@@ -1,53 +1,53 @@
 # Life Manager Vault
 
-Bem-vindo ao seu cofre pessoal no Obsidian. Aqui você centraliza finanças, tarefas, investimentos e perfil em um único espaço totalmente automatizado com Dataview, Meta Bind e Templater.
+Welcome to your personal Obsidian vault. It centralizes finances, tasks, investments, and profile data in one place powered by Dataview, Meta Bind, and Templater.
 
-## 📁 Estrutura
+## 📁 Structure
 
-- `Landing.md`: hub principal com os botões dos módulos e o painel “Overview” (avatar, nome, métricas de tarefas/finance/investments).
-- `Finance.md` e `finance/<ano>/<Mês>.md`: dashboards e notas mensais. Os meses seguem o padrão `finance/YYYY/Month.md`.
-- `Todo.md` + `todo/tasks.md`: gerenciador de tarefas com estados persistidos no frontmatter.
-- `Investments.md` + `investments/*.md`: controle de aportes por investimento com gráfico de evolução e formulário para atualizar o valor total.
-- `profile/`: inclui `stats.md` (dados do usuário) e `pfp.*` (avatar exibido no Landing).
-- `templates/`: modelos usados pelos botões Meta Bind (novo mês financeiro, novo investimento, etc.).
+- `Landing.md`: the main hub with module buttons and the “Overview” panel (avatar, name, metrics for tasks/finance/investments).
+- `Finance.md` + `finance/<year>/<Month>.md`: dashboards and monthly notes (use English month names, e.g., `finance/2025/November.md`).
+- `Todo.md` + `todo/tasks.md`: task manager where states persist in the frontmatter.
+- `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
+- `profile/`: stores `stats.md` (user data) and `pfp.*` (avatar rendered on the Landing page).
+- `templates/`: Templater files used by the Meta Bind buttons (new finance month, new investment, etc.).
 
-## 🚀 Como usar
+## 🚀 How to use
 
 1. **Landing / Overview**
-   - Ajuste `profile/stats.md` com `- name: Seu Nome` e coloque uma foto em `profile/pfp.png|jpg|jpeg|webp|gif`.
-   - O painel mostra automaticamente:
-     - Total investido no mês (somando aportes com tag de data atual em `investments/`).
-     - Tasks pendentes (todo/daily/weekly/monthly) baseadas no estado salvo em `Todo.md`.
-     - Saldo financeiro do mês vigente (Receitas – Despesas da nota atual em `finance/`).
+   - Update `profile/stats.md` with `- name: Your Name` and add a picture at `profile/pfp.png|jpg|jpeg|webp|gif`.
+   - The panel shows:
+     - Amount invested in the current month (sums contributions tagged with the current date in `investments/`).
+     - Open tasks (todo/daily/weekly/monthly) using the persisted state in `Todo.md`.
+     - Current month financial balance (Income – Expenses of the active note in `finance/`).
 
-2. **Finanças**
-   - Use o botão “Novo mês financeiro” em `Finance.md` para gerar o arquivo pelo template `templates/new finance month.md`.
-   - Dentro de cada mês, registre linhas no formato `categoria:: valor #tag`. O dashboard lê qualquer categoria para montar tabela e gráficos.
+2. **Finances**
+   - Click “New finance month” in `Finance.md` to create a note from `templates/new finance month.md`.
+   - Inside each month, log lines as `category:: value #tag`. The dashboards read every category to build tables and charts.
 
-3. **Tarefas**
-   - Liste tarefas em `todo/tasks.md` sob os blocos `## todo`, `## Daily`, `## Weekly`, `## Monthly`.
-   - `Todo.md` renderiza essas listas e persiste o estado em `todoStatus`, `dailyStatus`, etc. Remover uma linha do arquivo também remove o status salvo.
+3. **Tasks**
+   - Add tasks to `todo/tasks.md` under `## todo`, `## Daily`, `## Weekly`, and `## Monthly`.
+   - `Todo.md` renders the lists and stores their state in `todoStatus`, `dailyStatus`, etc. Removing a line also clears its saved state.
 
-4. **Investimentos**
-   - Cada nota em `investments/` possui `## Movimentações` com linhas `- valor #YYYY-MM-DD (#initial opcional)`.
-   - Em `Investments.md`, informe o novo valor total do investimento no formulário; o script calcula a diferença e grava a linha na nota com a data atual.
-   - O gráfico (Chart.js) acompanha a evolução dos últimos 12 meses para cada investimento.
+4. **Investments**
+   - Every note under `investments/` contains `## Movements` with lines like `- value #YYYY-MM-DD (#initial optional)`.
+   - In `Investments.md`, type the new total amount; the script saves only the delta with today’s date and (optionally) your custom tag.
+   - A Chart.js line chart tracks the last 12 months of growth per investment.
 
 5. **Templates**
-   - `templates/new finance month.md`: cria a estrutura padrão de despesas/receitas.
-   - Outros templates podem ser usados pelos botões Meta Bind (como novos investimentos ou páginas utilitárias).
+   - `templates/new finance month.md`: default structure for Expenses/Income.
+   - Additional templates can be triggered via Meta Bind for new investments or other workflows.
 
-## ✅ Requisitos
+## ✅ Requirements
 
-- Obsidian com os plugins: **Dataview**, **Meta Bind**, **Templater** (todos já referenciados nas notas).
-- Nome das notas mensais em inglês (`November`, `December`, etc.) para que o painel do Landing localize o arquivo correto via `moment().format("MMMM")`.
+- Obsidian with **Dataview**, **Meta Bind**, and **Templater** enabled.
+- Monthly notes must use English month names so the Landing dashboard can find them via `moment().format("MMMM")`.
 
-## 👋 Boas-vindas
+## 👋 Welcome
 
-Abra o `Landing.md`, configure seu nome/avatar e comece pelos botões principais:
+Open `Landing.md`, set your name/avatar, and start with the main buttons:
 
-1. Crie o mês atual com **Finance** (botão “Novo mês financeiro”).
-2. Registre tarefas em `todo/tasks.md` e acompanhe o progresso em **To-do**.
-3. Cadastre seus investimentos em `investments/` e observe o gráfico em **Investments**.
+1. Create the current month via **Finance** (“New finance month” button).
+2. Register your tasks in `todo/tasks.md` and follow progress in **To-do**.
+3. Log investments in `investments/` and monitor them inside **Investments**.
 
-Pronto! Sua rotina financeira e produtiva agora fica centralizada e sempre atualizada ao abrir o Obsidian. Bons registros! 🧠📈
+That’s it! Your financial and productivity routine stays in sync every time you open Obsidian. Happy tracking! 🧠📈

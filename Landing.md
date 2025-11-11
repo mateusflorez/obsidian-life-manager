@@ -23,9 +23,9 @@ const run = async () => {
     try {
       const statsContent = await dv.io.load("profile/stats.md");
       const match = statsContent.match(/^\s*-\s*name:\s*(.+)$/im);
-      return match ? match[1].trim() : "Bem-vindo";
+      return match ? match[1].trim() : "Welcome";
     } catch {
-      return "Bem-vindo";
+      return "Welcome";
     }
   })();
 
@@ -155,7 +155,7 @@ const run = async () => {
   };
 
   const parseMovements = (content) => {
-    const sectionMatch = content.match(/##\s*Movimentações[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i);
+    const sectionMatch = content.match(/##\s*Movements[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i);
     const block = sectionMatch ? sectionMatch[1] : content;
     return block
       .split("\n")
@@ -217,8 +217,8 @@ const run = async () => {
       }, 0);
     };
 
-    const expenses = sumSection("Despesas");
-    const income = sumSection("Receitas");
+    const expenses = sumSection("Expenses");
+    const income = sumSection("Income");
     return income - expenses;
   };
 
@@ -254,7 +254,7 @@ const run = async () => {
   }
 
   const headerInfo = header.createEl("div");
-  headerInfo.createEl("p", { text: "Bem-vindo de volta," }).style.margin = "0";
+  headerInfo.createEl("p", { text: "Welcome back," }).style.margin = "0";
   const nameEl = headerInfo.createEl("h2", { text: profileName });
   nameEl.style.margin = "0";
   nameEl.style.fontSize = "1.6rem";
@@ -266,17 +266,17 @@ const run = async () => {
 
   [
     {
-      label: "Investido neste mês",
+      label: "Invested this month",
       value: formatCurrency(investedThisMonth),
       hint: monthLabel,
     },
     {
-      label: "Tasks pendentes",
+      label: "Open tasks",
       value: `${tasks.unfinished}`,
-      hint: `${tasks.total} no total`,
+      hint: `${tasks.total} total`,
     },
     {
-      label: "Saldo financeiro",
+      label: "Financial balance",
       value: formatCurrency(balance),
       hint: `${currentMonthName} ${currentYear}`,
     },

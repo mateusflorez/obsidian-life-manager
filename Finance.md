@@ -1,7 +1,7 @@
 ---
 properties:
   file.folder:
-    displayName: Mês
+    displayName: Month
   statement:
     displayName: Statement
   spotify:
@@ -9,11 +9,11 @@ properties:
   mariana:
     displayName: Mariana
   salary:
-    displayName: Salário
+    displayName: Salary
 
 views:
   - type: table
-    name: Finance - Tabela
+    name: Finance - Table
     filters:
       and:
         - file.folder.startsWith("finance/")
@@ -34,10 +34,10 @@ views:
 # Finance
 
 > [!info]
-> Clique em **+ Novo mês financeiro** para criar um novo mês usando o template.
+> Click **+ New finance month** to create a fresh month from the template.
 
 ```meta-bind-button
-label: Novo mês financeiro
+label: New finance month
 icon: plus
 style: primary
 class: ""
@@ -64,7 +64,7 @@ actions:
   });
 
   if (pages.length === 0) {
-    dv.paragraph("❌ Crie `finance/2025/November.md` com `- cat:: valor`");
+    dv.paragraph("❌ Create `finance/2025/November.md` with `- cat:: value`");
     return;
   }
 
@@ -115,8 +115,8 @@ actions:
     for (const p of yearPages) {
       const month = p.file.name.replace('.md', '');
       const content = await dv.io.load(p.file.path);
-      const exp = parseSectionSum(content, 'Despesas');
-      const rec = parseSectionSum(content, 'Receitas');
+      const exp = parseSectionSum(content, 'Expenses');
+      const rec = parseSectionSum(content, 'Income');
       if (exp === 0 && rec === 0) continue;
       monthData[month] = { exp, rec, res: rec - exp };
     }
@@ -132,11 +132,11 @@ actions:
 
     const summary = months.map(m => ({ month: m, ...monthData[m] }));
 
-    // TABELA
-    dataContainer.createEl('h3', { text: `Resumo ${year}` });
+    // TABLE
+    dataContainer.createEl('h3', { text: `Summary ${year}` });
     const tableEl = dataContainer.createEl('div');
     dv.table(
-      ['Mês', 'Despesas', 'Receitas', 'Saldo'],
+      ['Month', 'Expenses', 'Income', 'Balance'],
       summary.map(s => [
         s.month,
         `R$ ${s.exp.toFixed(2).replace('.', ',')}`,
@@ -146,8 +146,8 @@ actions:
       tableEl
     );
 
-    // GRÁFICO
-    dataContainer.createEl('h3', { text: `Gráfico ${year}` });
+    // CHART
+    dataContainer.createEl('h3', { text: `Chart ${year}` });
     const chartDiv = dataContainer.createEl('div', { attr: { style: 'height:400px; margin:20px 0;' } });
     loadChartJs().then(() => {
       const canvas = document.createElement('canvas');
@@ -157,16 +157,16 @@ actions:
         data: {
           labels: months,
           datasets: [
-            { label: 'Despesas', data: summary.map(s => s.exp), backgroundColor: '#FF6384CC', borderColor: '#FF6384' },
-            { label: 'Receitas', data: summary.map(s => s.rec), backgroundColor: '#36A2EBCC', borderColor: '#36A2EB' },
-            { label: 'Saldo', data: summary.map(s => s.res), backgroundColor: '#4BC0C0CC', borderColor: '#4BC0C0' }
+            { label: 'Expenses', data: summary.map(s => s.exp), backgroundColor: '#FF6384CC', borderColor: '#FF6384' },
+            { label: 'Income', data: summary.map(s => s.rec), backgroundColor: '#36A2EBCC', borderColor: '#36A2EB' },
+            { label: 'Balance', data: summary.map(s => s.res), backgroundColor: '#4BC0C0CC', borderColor: '#4BC0C0' }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: { y: { beginAtZero: true, title: { display: true, text: 'R$' } } },
-          plugins: { title: { display: true, text: `Financeiro ${year}` } }
+          plugins: { title: { display: true, text: `Finances ${year}` } }
         }
       });
     });
@@ -178,18 +178,18 @@ actions:
 ```
 ```dataviewjs
 (() => {
-  // 1. Pega notas em finance/ANO/*.md
+  // 1. Fetch finance/Year/*.md notes
   const pages = dv.pages('"finance"').where(p => {
     const parts = p.file.folder.split('/');
     return parts.length === 2 && parts[0] === 'finance' && !isNaN(parts[1]);
   });
 
   if (pages.length === 0) {
-    dv.paragraph("❌ Crie `finance/2025/November.md` com `- cat:: valor #título`");
+    dv.paragraph("❌ Create `finance/2025/November.md` with `- cat:: value #title`");
     return;
   }
 
-  // 2. Select de ano
+  // 2. Year select
   const years = [...new Set(pages.map(p => p.file.folder.split('/')[1]))].map(Number).sort((a, b) => b - a);
   const yearSelect = dv.container.createEl('select');
   years.forEach(y => yearSelect.createEl('option', { text: y, value: y }));
@@ -214,7 +214,7 @@ actions:
     };
   })();
 
-  // 3. Renderiza por ano
+  // 3. Render per year
   const renderYear = async (year) => {
     dataContainer.innerHTML = '';
     const yearPages = pages.where(p => p.file.folder === `finance/${year}`);
@@ -227,7 +227,7 @@ actions:
 
       const content = await dv.io.load(p.file.path);
 
-      const afterExpenses = content.split(/##\s*Despesas/i)[1];
+      const afterExpenses = content.split(/##\s*Expenses/i)[1];
       if (!afterExpenses) continue;
       const expensesSection = afterExpenses.split(/\n##\s+/)[0];
       const lines = expensesSection.split('\n');
@@ -259,14 +259,14 @@ actions:
     );
 
     if (months.length === 0) {
-      dataContainer.createEl('p', { text: 'Nenhuma despesa encontrada para este ano.' });
+      dataContainer.createEl('p', { text: 'No expenses found for this year.' });
       return;
     }
 
     months.forEach(month => {
       const cats = monthMap[month].cats;
 
-      // PIE CHART (só despesas)
+      // PIE CHART (expenses only)
       dataContainer.createEl('h3', { text: `${month}:` });
       const pieDiv = dataContainer.createEl('div', { attr: { style: 'height:300px; margin:15px 0;' } });
 
@@ -289,12 +289,12 @@ actions:
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { title: { display: true, text: `Despesas - ${month}` }, legend: { position: 'right' } }
+            plugins: { title: { display: true, text: `Expenses - ${month}` }, legend: { position: 'right' } }
           }
         });
       });
 
-      // TABELA (só despesas)
+      // TABLE (expenses only)
       const tableDiv = dataContainer.createEl('div');
       const rows = [];
       Object.keys(cats).sort().forEach(cat => {
@@ -304,7 +304,7 @@ actions:
         });
       });
 
-      dv.table(['Categoria', 'Total'], rows, tableDiv);
+      dv.table(['Category', 'Total'], rows, tableDiv);
     });
   };
 

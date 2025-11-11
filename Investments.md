@@ -1,10 +1,10 @@
 # Investments
 
 > [!info]
-> Gerencie seus investimentos e acompanhe a evolução dos aportes mensais.
+> Manage your investments and track monthly contributions.
 
 ```meta-bind-button
-label: Novo investimento
+label: New investment
 icon: plus
 style: primary
 class: ""
@@ -31,7 +31,7 @@ const run = async () => {
     .where((p) => p.file.path.startsWith(`${folder}/`));
 
   if (pages.length === 0) {
-    dv.paragraph("❌ Nenhum investimento encontrado. Crie notas em `investments/`.");
+    dv.paragraph("❌ No investments found. Create notes under `investments/`.");
     return;
   }
 
@@ -71,7 +71,7 @@ const run = async () => {
   };
 
   const extractSectionLines = (content) => {
-    const sectionRegex = /##\s*Movimentações[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i;
+    const sectionRegex = /##\s*Movements[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i;
     const match = sectionRegex.exec(content);
     const target = match ? match[1] : content;
     return target.split("\n");
@@ -121,9 +121,9 @@ const run = async () => {
 
   const insertMovement = async (path, line) => {
     const tFile = ensureFile(path);
-    if (!tFile) throw new Error("Arquivo não encontrado");
+    if (!tFile) throw new Error("File not found");
     const content = await app.vault.read(tFile);
-    const sectionRegex = /(##\s*Movimentações[^\n]*\n)([\s\S]*?)(?=\n##\s+|$)/i;
+    const sectionRegex = /(##\s*Movements[^\n]*\n)([\s\S]*?)(?=\n##\s+|$)/i;
     const match = sectionRegex.exec(content);
     const lineWithBreak = line.endsWith("\n") ? line : `${line}\n`;
 
@@ -135,7 +135,7 @@ const run = async () => {
       const updated = before + match[1] + newBody + after;
       await app.vault.modify(tFile, updated);
     } else {
-      const nextContent = `${content.trim()}\n\n## Movimentações\n${lineWithBreak}`;
+      const nextContent = `${content.trim()}\n\n## Movements\n${lineWithBreak}`;
       await app.vault.modify(tFile, nextContent);
     }
   };
@@ -149,7 +149,7 @@ const run = async () => {
   }
 
   if (investments.length === 0) {
-    dv.paragraph("❌ Nenhuma movimentação encontrada.");
+    dv.paragraph("❌ No movements found.");
     return;
   }
 
@@ -227,7 +227,7 @@ const run = async () => {
         plugins: {
           title: {
             display: true,
-            text: "Evolução dos aportes (últimos 12 meses)",
+            text: "Contribution trend (last 12 months)",
           },
           legend: { position: "bottom" },
         },
@@ -258,7 +258,7 @@ const run = async () => {
 
     card.createEl("h3", { text: inv.page.file.name });
     card.createEl("p", {
-      text: `Total acumulado: R$ ${inv.total.toFixed(2).replace(".", ",")}`,
+      text: `Total invested: R$ ${inv.total.toFixed(2).replace(".", ",")}`,
     });
 
     const lastMove = inv.movements
@@ -266,9 +266,9 @@ const run = async () => {
       .sort((a, b) => b.date.valueOf() - a.date.valueOf())[0];
     if (lastMove) {
       card.createEl("p", {
-        text: `Último aporte: R$ ${lastMove.amount
+        text: `Last contribution: R$ ${lastMove.amount
           .toFixed(2)
-          .replace(".", ",")} em ${lastMove.date.format("DD/MM/YYYY")}`,
+          .replace(".", ",")} on ${lastMove.date.format("DD/MM/YYYY")}`,
       });
     }
 
@@ -280,7 +280,7 @@ const run = async () => {
       .reverse()
       .forEach((move) => {
         const li = list.createEl("li");
-        const dateStr = move.date ? move.date.format("DD/MM/YYYY") : "s/ data";
+        const dateStr = move.date ? move.date.format("DD/MM/YYYY") : "n/a";
         li.textContent = `R$ ${move.amount
           .toFixed(2)
           .replace(".", ",")} • ${dateStr}`;
@@ -295,14 +295,14 @@ const run = async () => {
       attr: {
         type: "number",
         step: "0.01",
-        placeholder: "Novo valor total (R$)",
+        placeholder: "New total value (R$)",
       },
     });
     const noteInput = form.createEl("input", {
-      attr: { type: "text", placeholder: "Tag opcional (ex: bonus)" },
+      attr: { type: "text", placeholder: "Optional tag (e.g., bonus)" },
     });
     const submitBtn = form.createEl("button", {
-      text: "Adicionar aporte",
+      text: "Add contribution",
       attr: { type: "submit" },
     });
 
@@ -310,19 +310,19 @@ const run = async () => {
       event.preventDefault();
       const parsedInput = parseFloat((valueInput.value || "").replace(",", "."));
       if (isNaN(parsedInput)) {
-        new Notice("Informe o novo valor total.");
+        new Notice("Enter the new total value.");
         return;
       }
 
       const currentTotal = inv.movements.reduce((sum, move) => sum + move.amount, 0);
       const delta = parseFloat((parsedInput - currentTotal).toFixed(2));
       if (Math.abs(delta) < 0.00001) {
-        new Notice("O valor informado já corresponde ao total atual.");
+        new Notice("The value you entered already matches the current total.");
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "Salvando...";
+      submitBtn.textContent = "Saving...";
 
       const amountStr = formatAmount(delta);
       const tags = [`#${todayStr}`];
@@ -336,16 +336,16 @@ const run = async () => {
 
       try {
         await insertMovement(inv.page.file.path, line);
-        new Notice("Aporte adicionado! Recarregue a visualização para ver o resultado.");
+        new Notice("Contribution added! Reload the view to see the result.");
         valueInput.value = "";
         noteInput.value = "";
       } catch (error) {
         console.error(error);
-        const reason = error?.message || "erro desconhecido";
-        new Notice(`Não foi possível salvar o aporte (${reason}).`);
+        const reason = error?.message || "unknown error";
+        new Notice(`Could not save the contribution (${reason}).`);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Adicionar aporte";
+        submitBtn.textContent = "Add contribution";
       }
     };
   });

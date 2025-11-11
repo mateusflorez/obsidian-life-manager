@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "Investments.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "Investments"
             }
           }
         ]
@@ -173,13 +173,16 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
-    "templates/stats template.md",
-    "README.md",
-    "profile/stats.md",
-    "Todo.md",
-    "Finance.md",
-    "Investments.md",
     "Landing.md",
+    "README.md",
+    "Todo.md",
+    "investments/Automatic Reserve.md",
+    "Finance.md",
+    "investments/Piggy Bank.md",
+    "investments/Home Purchase.md",
+    "Investments.md",
+    "templates/stats template.md",
+    "profile/stats.md",
     "investments/Reserva automática.md",
     "investments/Casa própria.md",
     "investments/Porquinho.md",
@@ -206,7 +209,6 @@
     "finance/october 2",
     "finance/october 1/October.md",
     "finance/october 1",
-    "finance/october/October.md",
-    "finance/november/November.md"
+    "finance/october/October.md"
   ]
 }

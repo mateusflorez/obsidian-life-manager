@@ -10,7 +10,7 @@ monthlyStatus: {}
 const run = async () => {
   const file = app.workspace.getActiveFile();
   if (!file) {
-    dv.paragraph("Abra o arquivo Todo para visualizar este módulo.");
+    dv.paragraph("Open the Todo note to see this module.");
     return;
   }
 
@@ -19,7 +19,7 @@ const run = async () => {
   try {
     rawTasks = await dv.io.load(tasksPath);
   } catch (error) {
-    dv.paragraph(`Não foi possível carregar ${tasksPath}.`);
+    dv.paragraph(`Could not load ${tasksPath}.`);
     return;
   }
 
@@ -175,7 +175,7 @@ const run = async () => {
     await cleanupStatus(statusField, validIds);
 
     if (items.length === 0) {
-      wrapper.createEl("p", { text: "Sem itens configurados." });
+      wrapper.createEl("p", { text: "No items configured." });
       continue;
     }
 
