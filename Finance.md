@@ -63,12 +63,79 @@ const run = async () => {
     return parts.length === 2 && parts[0] === 'finance' && !isNaN(parts[1]);
   });
 
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
+  const currency = (settingsPage.currency || "BRL").toUpperCase();
+
+  const translations = {
+    en: {
+      missingMonth: "❌ Create `finance/2025/November.md` with `- cat:: value`",
+      yearLabel: "Year:",
+      openCurrentMonth: ({ month }) => `Open ${month}`,
+      noDataYear: "No financial data for this year.",
+      summaryTitle: ({ year }) => `Summary ${year}`,
+      trendTitle: ({ year }) => `Trend ${year}`,
+      financesTitle: ({ year }) => `Finances ${year}`,
+      monthHeader: "Month",
+      expensesLabel: "Expenses",
+      incomeLabel: "Income",
+      balanceLabel: "Balance",
+      noEntries: "No entries yet.",
+      categoryLabel: "Category",
+      selectCategory: "Select category",
+      amountPlaceholder: "Amount",
+      tagPlaceholder: "Optional tag (e.g., rent)",
+      addIncome: "Add income",
+      addExpenses: "Add expense",
+      saving: "Saving...",
+      invalidEntry: "Select a category and enter a non-zero amount.",
+      entryAdded: "Entry added! Reload to see the update.",
+      couldNotSave: ({ reason }) => `Could not save entry (${reason}).`,
+      openMonth: "Open month",
+    },
+    pt: {
+      missingMonth: "❌ Crie `finance/2025/November.md` com linhas `- cat:: valor`",
+      yearLabel: "Ano:",
+      openCurrentMonth: ({ month }) => `Abrir ${month}`,
+      noDataYear: "Nenhum dado financeiro para este ano.",
+      summaryTitle: ({ year }) => `Resumo ${year}`,
+      trendTitle: ({ year }) => `Tendência ${year}`,
+      financesTitle: ({ year }) => `Finanças ${year}`,
+      monthHeader: "Mês",
+      expensesLabel: "Despesas",
+      incomeLabel: "Receitas",
+      balanceLabel: "Saldo",
+      noEntries: "Sem lançamentos.",
+      categoryLabel: "Categoria",
+      selectCategory: "Selecione a categoria",
+      amountPlaceholder: "Valor",
+      tagPlaceholder: "Tag opcional (ex.: aluguel)",
+      addIncome: "Adicionar receita",
+      addExpenses: "Adicionar despesa",
+      saving: "Salvando...",
+      invalidEntry: "Escolha uma categoria e informe um valor diferente de zero.",
+      entryAdded: "Lançamento adicionado! Recarregue para ver a atualização.",
+      couldNotSave: ({ reason }) => `Não foi possível salvar (${reason}).`,
+      openMonth: "Abrir mês",
+    },
+  };
+
+  const t = (key, data = {}) => {
+    const value = translations[language]?.[key] ?? translations.en[key] ?? key;
+    return typeof value === "function" ? value(data) : value;
+  };
+
   if (pages.length === 0) {
-    dv.paragraph("❌ Create `finance/2025/November.md` with `- cat:: value`");
+    dv.paragraph(t("missingMonth"));
     return;
   }
 
-  const formatCurrency = (value) => `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
+  const currencySymbols = {
+    BRL: { prefix: "R$", format: (value) => Number(value || 0).toFixed(2).replace('.', ',') },
+    USD: { prefix: "$", format: (value) => Number(value || 0).toFixed(2) },
+  };
+  const currencyConfig = currencySymbols[currency] || currencySymbols.BRL;
+  const formatCurrency = (value) => `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
   const makeTagSlug = (value) =>
     value
       .toLowerCase()
@@ -154,7 +221,7 @@ const run = async () => {
   controls.style.alignItems = 'center';
   controls.style.margin = '0.5rem 0 1rem';
 
-  const yearLabel = controls.createEl('label', { text: 'Year:' });
+  const yearLabel = controls.createEl('label', { text: t('yearLabel') });
   yearLabel.style.fontWeight = '600';
 
   const yearSelect = controls.createEl('select');
@@ -167,7 +234,7 @@ const run = async () => {
   const currentMonthName = today.format('MMMM');
   const currentPath = `finance/${currentYear}/${currentMonthName}.md`;
 
-  const openMonthBtn = controls.createEl('button', { text: `Open ${currentMonthName}` });
+  const openMonthBtn = controls.createEl('button', { text: t('openCurrentMonth', { month: currentMonthName }) });
   openMonthBtn.className = 'mod-cta';
   openMonthBtn.style.cursor = 'pointer';
   openMonthBtn.onclick = () => app.workspace.openLinkText(currentPath, '', false);
@@ -210,7 +277,7 @@ const run = async () => {
     }
 
     if (monthEntries.length === 0) {
-      dataContainer.createEl('p', { text: 'No financial data for this year.' });
+      dataContainer.createEl('p', { text: t('noDataYear') });
       return;
     }
 
@@ -218,17 +285,17 @@ const run = async () => {
     const months = monthEntries.map(m => m.month);
 
     const summaryTable = dataContainer.createEl('div');
-    summaryTable.createEl('h3', { text: `Summary ${year}` });
+    summaryTable.createEl('h3', { text: t('summaryTitle', { year }) });
     const rows = monthEntries.map(entry => [
       entry.month,
       formatCurrency(entry.expenses.total),
       formatCurrency(entry.income.total),
       formatCurrency(entry.income.total - entry.expenses.total)
     ]);
-    dv.table(['Month', 'Expenses', 'Income', 'Balance'], rows, summaryTable);
+    dv.table([t('monthHeader'), t('expensesLabel'), t('incomeLabel'), t('balanceLabel')], rows, summaryTable);
 
     const chartWrapper = dataContainer.createEl('div');
-    chartWrapper.createEl('h3', { text: `Trend ${year}` });
+    chartWrapper.createEl('h3', { text: t('trendTitle', { year }) });
     const chartDiv = chartWrapper.createEl('div', { attr: { style: 'height:400px; margin:20px 0;' } });
     loadChartJs().then(() => {
       const canvas = document.createElement('canvas');
@@ -239,21 +306,21 @@ const run = async () => {
           labels: months,
           datasets: [
             {
-              label: 'Expenses',
+              label: t('expensesLabel'),
               data: monthEntries.map(m => m.expenses.total),
               borderColor: '#FF6384',
               backgroundColor: '#FF638433',
               tension: 0.3
             },
             {
-              label: 'Income',
+              label: t('incomeLabel'),
               data: monthEntries.map(m => m.income.total),
               borderColor: '#36A2EB',
               backgroundColor: '#36A2EB33',
               tension: 0.3
             },
             {
-              label: 'Balance',
+              label: t('balanceLabel'),
               data: monthEntries.map(m => m.income.total - m.expenses.total),
               borderColor: '#4BC0C0',
               backgroundColor: '#4BC0C033',
@@ -266,13 +333,13 @@ const run = async () => {
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
           plugins: {
-            title: { display: true, text: `Finances ${year}` },
+            title: { display: true, text: t('financesTitle', { year }) },
             legend: { position: 'bottom' }
           },
           scales: {
             y: {
               beginAtZero: true,
-              ticks: { callback: (value) => `R$ ${value}` }
+              ticks: { callback: (value) => `${currencyConfig.prefix} ${value}` }
             }
           }
         }
@@ -287,7 +354,7 @@ const run = async () => {
 
     const renderList = (items, parent) => {
       if (items.length === 0) {
-        parent.createEl('p', { text: 'No entries yet.' }).style.color = 'var(--text-muted)';
+        parent.createEl('p', { text: t('noEntries') }).style.color = 'var(--text-muted)';
         return;
       }
       const list = parent.createEl('ul');
@@ -307,11 +374,11 @@ const run = async () => {
       form.style.gap = '0.35rem';
       form.style.marginTop = '0.5rem';
 
-      const nameLabel = form.createEl('label', { text: 'Category' });
+      const nameLabel = form.createEl('label', { text: t('categoryLabel') });
       nameLabel.style.fontWeight = '600';
       const nameInput = form.createEl('select');
       nameInput.required = true;
-      const placeholder = nameInput.createEl('option', { text: 'Select category', value: '' });
+      const placeholder = nameInput.createEl('option', { text: t('selectCategory'), value: '' });
       placeholder.disabled = true;
       placeholder.selected = true;
 
@@ -324,9 +391,9 @@ const run = async () => {
           nameInput.createEl('option', { text: cat, value: cat });
         });
       });
-      const valueInput = form.createEl('input', { attr: { type: 'number', step: '0.01', placeholder: 'Amount', required: 'true' } });
-      const noteInput = form.createEl('input', { attr: { type: 'text', placeholder: 'Optional tag (e.g., rent)' } });
-      const submitBtn = form.createEl('button', { text: `Add ${heading.toLowerCase()}` });
+      const valueInput = form.createEl('input', { attr: { type: 'number', step: '0.01', placeholder: t('amountPlaceholder'), required: 'true' } });
+      const noteInput = form.createEl('input', { attr: { type: 'text', placeholder: t('tagPlaceholder') } });
+      const submitBtn = form.createEl('button', { text: heading === 'Income' ? t('addIncome') : t('addExpenses') });
       submitBtn.type = 'submit';
       submitBtn.style.cursor = 'pointer';
 
@@ -335,11 +402,11 @@ const run = async () => {
         const category = nameInput.value.trim();
         const value = parseFloat((valueInput.value || '').replace(',', '.'));
         if (!category || isNaN(value) || value === 0) {
-          new Notice('Select a category and enter a non-zero amount.');
+          new Notice(t('invalidEntry'));
           return;
         }
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Saving...';
+        submitBtn.textContent = t('saving');
 
         const tag = noteInput.value.trim();
         const safeTag = tag ? makeTagSlug(tag) : '';
@@ -348,17 +415,17 @@ const run = async () => {
 
         try {
           await insertLine(filePath, heading, line);
-          new Notice(`${heading} added! Reload to see the update.`);
+          new Notice(t('entryAdded'));
           nameInput.value = '';
           valueInput.value = '';
           noteInput.value = '';
         } catch (error) {
           console.error(error);
           const reason = error?.message || 'unknown error';
-          new Notice(`Could not save entry (${reason}).`);
+          new Notice(t('couldNotSave', { reason }));
         } finally {
           submitBtn.disabled = false;
-          submitBtn.textContent = `Add ${heading.toLowerCase()}`;
+          submitBtn.textContent = heading === 'Income' ? t('addIncome') : t('addExpenses');
         }
       };
     };
@@ -380,7 +447,7 @@ const run = async () => {
       const title = cardHeader.createEl('h3', { text: entry.month });
       title.style.margin = '0';
 
-      const openButton = cardHeader.createEl('button', { text: 'Open month' });
+      const openButton = cardHeader.createEl('button', { text: t('openMonth') });
       openButton.style.cursor = 'pointer';
       openButton.onclick = () => app.workspace.openLinkText(entry.file.path, '', false);
 
@@ -396,7 +463,8 @@ const run = async () => {
         colHeader.style.justifyContent = 'space-between';
         colHeader.style.alignItems = 'baseline';
 
-        const colTitle = colHeader.createEl('h4', { text: heading });
+        const headingLabel = heading === 'Income' ? t('incomeLabel') : t('expensesLabel');
+        const colTitle = colHeader.createEl('h4', { text: headingLabel });
         colTitle.style.margin = '0';
         colHeader.createEl('span', { text: formatCurrency(data.total) });
 

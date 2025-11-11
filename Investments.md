@@ -30,8 +30,71 @@ const run = async () => {
     .pages(`"${folder}"`)
     .where((p) => p.file.path.startsWith(`${folder}/`));
 
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
+  const currency = (settingsPage.currency || "BRL").toUpperCase();
+
+  const translations = {
+    en: {
+      noInvestments: "❌ No investments found. Create notes under `investments/`.",
+      noMovements: "❌ No movements found.",
+      chartTitle: "Contribution trend (last 12 months)",
+      totalInvested: "Total invested:",
+      lastContribution: "Last contribution:",
+      onDate: ({ date }) => `on ${date}`,
+      newTotalPlaceholder: ({ prefix }) => `New total value (${prefix})`,
+      optionalTagPlaceholder: "Optional tag (e.g., bonus)",
+      addContribution: "Add contribution",
+      enterValue: "Enter the new total value.",
+      valueMatches: "The value you entered already matches the current total.",
+      saving: "Saving...",
+      contributionAdded: "Contribution added! Reload the view to see the result.",
+      couldNotSave: ({ reason }) => `Could not save the contribution (${reason}).`,
+    },
+    pt: {
+      noInvestments: "❌ Nenhum investimento encontrado. Crie notas em `investments/`.",
+      noMovements: "❌ Nenhum movimento registrado.",
+      chartTitle: "Tendência de aportes (últimos 12 meses)",
+      totalInvested: "Total investido:",
+      lastContribution: "Último aporte:",
+      onDate: ({ date }) => `em ${date}`,
+      newTotalPlaceholder: ({ prefix }) => `Novo valor total (${prefix})`,
+      optionalTagPlaceholder: "Tag opcional (ex.: bônus)",
+      addContribution: "Adicionar aporte",
+      enterValue: "Informe o novo valor total.",
+      valueMatches: "O valor informado já corresponde ao total atual.",
+      saving: "Salvando...",
+      contributionAdded: "Aporte registrado! Recarregue para ver o resultado.",
+      couldNotSave: ({ reason }) => `Não foi possível salvar o aporte (${reason}).`,
+    },
+  };
+
+  const t = (key, data = {}) => {
+    const value = translations[language]?.[key] ?? translations.en[key] ?? key;
+    return typeof value === "function" ? value(data) : value;
+  };
+
+  const currencySymbols = {
+    BRL: {
+      prefix: "R$",
+      format: (value) => Number(value).toFixed(2).replace(".", ","),
+    },
+    USD: {
+      prefix: "$",
+      format: (value) => Number(value).toFixed(2),
+    },
+  };
+
+  const currencyConfig = currencySymbols[currency] || currencySymbols.BRL;
+  const formatCurrency = (value) => `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
+  const formatLedgerAmount = (value) => {
+    if (!isFinite(value)) return "0";
+    const fixed = Number(value).toFixed(2);
+    return fixed.replace(/\.00$/, "");
+  };
+
   if (pages.length === 0) {
-    dv.paragraph("❌ No investments found. Create notes under `investments/`.");
+    dv.paragraph(t("noInvestments"));
     return;
   }
 
@@ -64,7 +127,19 @@ const run = async () => {
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-  const formatAmount = (value) => {
+  const currencySymbols = {
+    BRL: {
+      prefix: "R$",
+      format: (value) => Number(value).toFixed(2).replace(".", ","),
+    },
+    USD: {
+      prefix: "$",
+      format: (value) => Number(value).toFixed(2),
+    },
+  };
+  const currencyConfig = currencySymbols[currency] || currencySymbols.BRL;
+  const formatCurrency = (value) => `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
+  const formatLedgerAmount = (value) => {
     if (!isFinite(value)) return "0";
     const fixed = Number(value).toFixed(2);
     return fixed.replace(/\.00$/, "");
@@ -149,7 +224,7 @@ const run = async () => {
   }
 
   if (investments.length === 0) {
-    dv.paragraph("❌ No movements found.");
+    dv.paragraph(t("noMovements"));
     return;
   }
 
@@ -227,14 +302,14 @@ const run = async () => {
         plugins: {
           title: {
             display: true,
-            text: "Contribution trend (last 12 months)",
+            text: t("chartTitle"),
           },
           legend: { position: "bottom" },
         },
         scales: {
           y: {
             ticks: {
-              callback: (value) => `R$ ${Number(value).toFixed(0)}`,
+              callback: (value) => `${currencyConfig.prefix} ${Number(value).toFixed(0)}`,
             },
           },
         },
@@ -258,7 +333,7 @@ const run = async () => {
 
     card.createEl("h3", { text: inv.page.file.name });
     card.createEl("p", {
-      text: `Total invested: R$ ${inv.total.toFixed(2).replace(".", ",")}`,
+      text: `${t("totalInvested")} ${formatCurrency(inv.total)}`,
     });
 
     const lastMove = inv.movements
@@ -266,9 +341,7 @@ const run = async () => {
       .sort((a, b) => b.date.valueOf() - a.date.valueOf())[0];
     if (lastMove) {
       card.createEl("p", {
-        text: `Last contribution: R$ ${lastMove.amount
-          .toFixed(2)
-          .replace(".", ",")} on ${lastMove.date.format("DD/MM/YYYY")}`,
+        text: `${t("lastContribution")} ${formatCurrency(lastMove.amount)} ${t("onDate", { date: lastMove.date.format("DD/MM/YYYY") })}`,
       });
     }
 
@@ -281,9 +354,7 @@ const run = async () => {
       .forEach((move) => {
         const li = list.createEl("li");
         const dateStr = move.date ? move.date.format("DD/MM/YYYY") : "n/a";
-        li.textContent = `R$ ${move.amount
-          .toFixed(2)
-          .replace(".", ",")} • ${dateStr}`;
+        li.textContent = `${formatCurrency(move.amount)} • ${dateStr}`;
       });
 
     const form = card.createEl("form");
@@ -295,14 +366,14 @@ const run = async () => {
       attr: {
         type: "number",
         step: "0.01",
-        placeholder: "New total value (R$)",
+        placeholder: t("newTotalPlaceholder", { prefix: currencyConfig.prefix }),
       },
     });
     const noteInput = form.createEl("input", {
-      attr: { type: "text", placeholder: "Optional tag (e.g., bonus)" },
+      attr: { type: "text", placeholder: t("optionalTagPlaceholder") },
     });
     const submitBtn = form.createEl("button", {
-      text: "Add contribution",
+      text: t("addContribution"),
       attr: { type: "submit" },
     });
 
@@ -310,21 +381,21 @@ const run = async () => {
       event.preventDefault();
       const parsedInput = parseFloat((valueInput.value || "").replace(",", "."));
       if (isNaN(parsedInput)) {
-        new Notice("Enter the new total value.");
+        new Notice(t("enterValue"));
         return;
       }
 
       const currentTotal = inv.movements.reduce((sum, move) => sum + move.amount, 0);
       const delta = parseFloat((parsedInput - currentTotal).toFixed(2));
       if (Math.abs(delta) < 0.00001) {
-        new Notice("The value you entered already matches the current total.");
+        new Notice(t("valueMatches"));
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "Saving...";
+      submitBtn.textContent = t("saving");
 
-      const amountStr = formatAmount(delta);
+      const amountStr = formatLedgerAmount(delta);
       const tags = [`#${todayStr}`];
       const note = noteInput.value.trim();
       if (note) {
@@ -336,16 +407,16 @@ const run = async () => {
 
       try {
         await insertMovement(inv.page.file.path, line);
-        new Notice("Contribution added! Reload the view to see the result.");
+        new Notice(t("contributionAdded"));
         valueInput.value = "";
         noteInput.value = "";
       } catch (error) {
         console.error(error);
         const reason = error?.message || "unknown error";
-        new Notice(`Could not save the contribution (${reason}).`);
+        new Notice(t("couldNotSave", { reason }));
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Add contribution";
+        submitBtn.textContent = t("addContribution");
       }
     };
   });

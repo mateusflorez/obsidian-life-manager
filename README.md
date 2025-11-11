@@ -9,6 +9,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
 - `Todo.md` + `todo/tasks.md`: task manager where states persist in the frontmatter.
 - `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
 - `Training.md` hub + `training/exercises/`: workout dashboard with exercise creator, per-exercise session lists, calendar heatmap, and inline charts.
+- `Config.md` + `config/settings.md`: UI preferences (currently language selection) that cascade through the dashboards.
 - `profile/`: stores `stats.md` (user data) and `pfp.*` (avatar rendered on the Landing page).
 - `templates/`: Templater files used by the Meta Bind buttons (new finance month, new investment, etc.).
 
@@ -39,7 +40,11 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
    - Each exercise note keeps its own `## Sessions` list via lines like `- date:: 2025-11-10 load:: 100 reps:: 5`.
    - The Training hub aggregates all exercises to show last sessions, total volume, and a calendar heatmap, while each note renders its personal chart + table.
 
-6. **Templates**
+6. **Config**
+   - Open `Config.md` to choose the interface language (English or Portuguese) and preferred currency (Real or Dollar). These options only change UI labels/symbols—logic and filenames stay the same.
+   - Preferences are stored in `config/settings.md`, so they sync across devices with the vault.
+
+7. **Templates**
    - `templates/new finance month.md`: default structure for Expenses/Income.
    - `templates/new training exercise.md`: skeleton for every exercise note (volume chart included).
    - Additional templates can be triggered via Meta Bind for new investments or other workflows.

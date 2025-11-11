@@ -30,9 +30,54 @@ actions:
 ## Task board
 ```dataviewjs
 const run = async () => {
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
+
+  const translations = {
+    en: {
+      openModule: "Open the Todo note to see this module.",
+      loadError: ({ path }) => `Could not load ${path}.`,
+      sectionTodo: "To-do",
+      sectionDaily: "Daily",
+      sectionWeekly: "Weekly",
+      sectionMonthly: "Monthly",
+      inputPlaceholder: ({ title }) => `Add to ${title}`,
+      typeDescription: "Type a task description first.",
+      saving: "Saving...",
+      taskAdded: "Task added! Reload the note to see it here.",
+      taskAddError: "Could not add the task.",
+      noItems: "No items configured.",
+      taskRemoved: "Task completed and removed.",
+      taskRemoveError: "Task completed but could not be removed.",
+      addButton: "Add",
+    },
+    pt: {
+      openModule: "Abra a nota Todo para ver este módulo.",
+      loadError: ({ path }) => `Não foi possível carregar ${path}.`,
+      sectionTodo: "Tarefas",
+      sectionDaily: "Diárias",
+      sectionWeekly: "Semanais",
+      sectionMonthly: "Mensais",
+      inputPlaceholder: ({ title }) => `Adicionar em ${title}`,
+      typeDescription: "Escreva a descrição da tarefa primeiro.",
+      saving: "Salvando...",
+      taskAdded: "Tarefa adicionada! Recarregue a nota para vê-la aqui.",
+      taskAddError: "Não foi possível adicionar a tarefa.",
+      noItems: "Nenhum item configurado.",
+      taskRemoved: "Tarefa concluída e removida.",
+      taskRemoveError: "Tarefa concluída, mas não pôde ser removida.",
+      addButton: "Adicionar",
+    },
+  };
+
+  const t = (key, data = {}) => {
+    const value = translations[language]?.[key] ?? translations.en[key] ?? key;
+    return typeof value === "function" ? value(data) : value;
+  };
+
   const file = app.workspace.getActiveFile();
   if (!file) {
-    dv.paragraph("Open the Todo note to see this module.");
+    dv.paragraph(t("openModule"));
     return;
   }
 
@@ -41,7 +86,7 @@ const run = async () => {
   try {
     rawTasks = await dv.io.load(tasksPath);
   } catch (error) {
-    dv.paragraph(`Could not load ${tasksPath}.`);
+    dv.paragraph(t("loadError", { path: tasksPath }));
     return;
   }
 
@@ -51,10 +96,10 @@ const run = async () => {
   const XP_INCREMENT = 50;
 
   const sections = [
-    { key: "todo", title: "Todo", heading: "todo", type: "boolean" },
-    { key: "daily", title: "Daily", heading: "daily", type: "cycle", cycle: "day" },
-    { key: "weekly", title: "Weekly", heading: "weekly", type: "cycle", cycle: "week" },
-    { key: "monthly", title: "Monthly", heading: "monthly", type: "cycle", cycle: "month" },
+    { key: "todo", title: t("sectionTodo"), heading: "todo", type: "boolean" },
+    { key: "daily", title: t("sectionDaily"), heading: "daily", type: "cycle", cycle: "day" },
+    { key: "weekly", title: t("sectionWeekly"), heading: "weekly", type: "cycle", cycle: "week" },
+    { key: "monthly", title: t("sectionMonthly"), heading: "monthly", type: "cycle", cycle: "month" },
   ];
 
   const statusFields = {
@@ -317,7 +362,7 @@ const run = async () => {
     await cleanupStatus(statusField, validIds);
 
     if (items.length === 0) {
-      wrapper.createEl("p", { text: "No items configured." });
+      wrapper.createEl("p", { text: t("noItems") });
     }
 
     const form = wrapper.createEl("form");
@@ -326,7 +371,7 @@ const run = async () => {
     form.style.gap = "0.35rem";
     form.style.marginBottom = "0.5rem";
     const input = form.createEl("input", {
-      attr: { type: "text", placeholder: `Add to ${section.title}` },
+      attr: { type: "text", placeholder: t("inputPlaceholder", { title: section.title }) },
     });
     input.style.flex = "1";
     const dateInput = form.createEl("input", {
@@ -339,7 +384,7 @@ const run = async () => {
     });
     timeInput.style.flex = "0 0 auto";
     timeInput.style.minWidth = "7rem";
-    const button = form.createEl("button", { text: "Add" });
+    const button = form.createEl("button", { text: t("addButton") });
     button.type = "submit";
     button.style.cursor = "pointer";
 
@@ -347,7 +392,7 @@ const run = async () => {
       event.preventDefault();
       const text = input.value.trim();
       if (!text) {
-        new Notice("Type a task description first.");
+        new Notice(t("typeDescription"));
         return;
       }
       const dateValue = dateInput.value.trim();
@@ -359,19 +404,19 @@ const run = async () => {
       const composedText = parts.join(" ");
 
       button.disabled = true;
-      button.textContent = "Saving...";
+      button.textContent = t("saving");
       try {
         await insertTask(section.heading, composedText);
-        new Notice("Task added! Reload the note to see it here.");
+        new Notice(t("taskAdded"));
         input.value = "";
         dateInput.value = "";
         timeInput.value = "";
       } catch (error) {
         console.error(error);
-        new Notice("Could not add the task.");
+        new Notice(t("taskAddError"));
       } finally {
         button.disabled = false;
-        button.textContent = "Add";
+        button.textContent = t("addButton");
       }
     };
 
@@ -410,11 +455,11 @@ const run = async () => {
                 if (removed) {
                   await persistStatus(statusField, item.id, null);
                   row.remove();
-                  new Notice("Task completed and removed.");
+                  new Notice(t("taskRemoved"));
                 }
               } catch (error) {
                 console.error(error);
-                new Notice("Task completed but could not be removed.");
+                new Notice(t("taskRemoveError"));
               }
             }
           }

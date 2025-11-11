@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Training.md",
+                "file": "Landing.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Training"
+              "title": "Landing"
             }
           }
         ]
@@ -173,16 +173,19 @@
   },
   "active": "3347ec63467bca09",
   "lastOpenFiles": [
-    "Todo.md",
+    "Config.md",
     "Landing.md",
-    "Training.md",
+    "README.md",
     "Investments.md",
+    "Finance.md",
+    "finance/2025/November.md",
+    "Todo.md",
+    "Training.md",
+    "config/settings.md",
     "training/exercises/Squats.md",
     "training/training.md",
-    "README.md",
     "templates/new training exercise.md",
     "templates/new",
-    "Finance.md",
     "training/exercises",
     "training",
     "2025-11-11.md",
@@ -192,7 +195,6 @@
     "CLAUDE.md",
     "config",
     "finance/2025/month.md",
-    "finance/2025/November.md",
     "templates/new finance month.md",
     "templates/new investment.md",
     "templates/stats template.md",
@@ -201,8 +203,6 @@
     "investments/Piggy Bank.md",
     "investments/Home Purchase.md",
     "investments/Reserva automática.md",
-    "investments/Casa própria.md",
-    "investments/Porquinho.md",
     "profile/pfp.jpg",
     "profile",
     "investments",

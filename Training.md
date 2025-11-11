@@ -14,6 +14,83 @@ const run = async () => {
   const today = window.moment();
   const todayStr = today.format("YYYY-MM-DD");
 
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
+
+  const translations = {
+    en: {
+      exercisesTitle: "Exercises",
+      noExercises: "No exercises yet.",
+      newExercisePlaceholder: "New exercise name",
+      createExercise: "Create exercise",
+      typeNameFirst: "Type a name first.",
+      saving: "Saving...",
+      exerciseCreated: "Exercise created.",
+      couldNotCreateExercise: "Could not create exercise.",
+      exerciseExists: "Exercise already exists.",
+      logSession: "Log a session",
+      loadPlaceholder: "Load",
+      repsPlaceholder: "Reps",
+      notesPlaceholder: "Notes (optional)",
+      addSession: "Add session",
+      createExerciseFirst: "Create an exercise first.",
+      chooseExercise: "Choose an exercise.",
+      invalidLoad: "Provide a valid load.",
+      invalidReps: "Provide valid reps.",
+      sessionLogged: "Session logged.",
+      couldNotSaveSession: "Could not save the session.",
+      sessionsCard: "Sessions",
+      totalVolumeCard: "Total volume",
+      noSessionsLogged: "No sessions logged yet.",
+      tableDate: "Date",
+      tableExercise: "Exercise",
+      tableLoad: "Load",
+      tableReps: "Reps",
+      tableVolume: "Volume",
+      last60Days: "Last 60 days",
+      noTraining: "No training",
+      sessionCount: ({ count }) => `${count} session(s)`,
+    },
+    pt: {
+      exercisesTitle: "Exercícios",
+      noExercises: "Nenhum exercício ainda.",
+      newExercisePlaceholder: "Nome do novo exercício",
+      createExercise: "Criar exercício",
+      typeNameFirst: "Digite um nome primeiro.",
+      saving: "Salvando...",
+      exerciseCreated: "Exercício criado.",
+      couldNotCreateExercise: "Não foi possível criar o exercício.",
+      exerciseExists: "O exercício já existe.",
+      logSession: "Registrar treino",
+      loadPlaceholder: "Carga",
+      repsPlaceholder: "Repetições",
+      notesPlaceholder: "Notas (opcional)",
+      addSession: "Adicionar treino",
+      createExerciseFirst: "Crie um exercício primeiro.",
+      chooseExercise: "Escolha um exercício.",
+      invalidLoad: "Informe uma carga válida.",
+      invalidReps: "Informe repetições válidas.",
+      sessionLogged: "Treino registrado.",
+      couldNotSaveSession: "Não foi possível salvar o treino.",
+      sessionsCard: "Treinos",
+      totalVolumeCard: "Volume total",
+      noSessionsLogged: "Nenhum treino registrado ainda.",
+      tableDate: "Data",
+      tableExercise: "Exercício",
+      tableLoad: "Carga",
+      tableReps: "Repetições",
+      tableVolume: "Volume",
+      last60Days: "Últimos 60 dias",
+      noTraining: "Sem treino",
+      sessionCount: ({ count }) => `${count} treino(s)`,
+    },
+  };
+
+  const t = (key, data = {}) => {
+    const value = translations[language]?.[key] ?? translations.en[key] ?? key;
+    return typeof value === "function" ? value(data) : value;
+  };
+
   const module = dv.container.createEl("div", { cls: "training-module" });
 
   const sanitizeTitle = (name) =>
@@ -112,7 +189,7 @@ const run = async () => {
   const renderExerciseList = () => {
     exerciseList.innerHTML = "";
     if (exercises.length === 0) {
-      exerciseList.createEl("p", { text: "No exercises yet." });
+      exerciseList.createEl("p", { text: t("noExercises") });
       return;
     }
     const ul = exerciseList.createEl("ul");
@@ -156,8 +233,8 @@ const run = async () => {
       strong.style.fontSize = "1.3em";
     };
 
-    card("Sessions", totalSessions.toString());
-    card("Total volume", formatNumber(totalVolume));
+    card(t("sessionsCard"), totalSessions.toString());
+    card(t("totalVolumeCard"), formatNumber(totalVolume));
   };
 
   renderSummary();
@@ -168,14 +245,14 @@ const run = async () => {
   const renderRecent = () => {
     recentWrapper.innerHTML = "";
     if (sessions.length === 0) {
-      recentWrapper.createEl("p", { text: "No sessions logged yet." });
+      recentWrapper.createEl("p", { text: t("noSessionsLogged") });
       return;
     }
     const table = recentWrapper.createEl("table");
     table.style.width = "100%";
     table.style.borderCollapse = "collapse";
     const headerRow = table.createEl("tr");
-    ["Date", "Exercise", "Load", "Reps", "Volume"].forEach((label) => {
+    [t("tableDate"), t("tableExercise"), t("tableLoad"), t("tableReps"), t("tableVolume")].forEach((label) => {
       const th = headerRow.createEl("th", { text: label });
       th.style.textAlign = "left";
       th.style.borderBottom = "1px solid var(--background-modifier-border)";
@@ -211,7 +288,7 @@ const run = async () => {
 
   const renderHeatmap = () => {
     heatmapWrapper.innerHTML = "";
-    const title = heatmapWrapper.createEl("h4", { text: "Last 60 days" });
+    const title = heatmapWrapper.createEl("h4", { text: t("last60Days") });
     title.style.marginBottom = "0.5rem";
 
     const grid = heatmapWrapper.createEl("div");
@@ -240,7 +317,9 @@ const run = async () => {
       cell.style.backgroundColor = intensity
         ? `rgba(76, 175, 80, ${0.2 + intensity * 0.8})`
         : "var(--background-modifier-border)";
-      cell.title = `${key}: ${value ? `${value} session(s)` : "No training"}`;
+      cell.title = `${key}: ${
+        value ? t("sessionCount", { count: value }) : t("noTraining")
+      }`;
     }
   };
 
@@ -272,7 +351,7 @@ const run = async () => {
     renderHeatmap();
   };
 
-  const header = module.createEl("h3", { text: "Exercises" });
+  const header = module.createEl("h3", { text: t("exercisesTitle") });
   header.style.marginTop = "1.5rem";
 
   const getTemplateContent = (() => {
@@ -295,7 +374,7 @@ const run = async () => {
     const normalized = sanitizeTitle(rawName || "");
     if (!normalized) throw new Error("Provide a valid name.");
     if (exercises.some((ex) => ex.name.toLowerCase() === normalized.toLowerCase())) {
-      throw new Error("Exercise already exists.");
+      throw new Error(t("exerciseExists"));
     }
 
     const targetPath = `${exercisesFolder}/${normalized}.md`;
@@ -319,39 +398,39 @@ const run = async () => {
   exerciseForm.style.marginBottom = "1rem";
 
   const exerciseInput = exerciseForm.createEl("input", {
-    attr: { type: "text", placeholder: "New exercise name" },
+    attr: { type: "text", placeholder: t("newExercisePlaceholder") },
   });
   exerciseInput.style.flex = "1";
 
-  const exerciseButton = exerciseForm.createEl("button", { text: "Create exercise" });
+  const exerciseButton = exerciseForm.createEl("button", { text: t("createExercise") });
   exerciseButton.type = "submit";
 
   exerciseForm.onsubmit = async (event) => {
     event.preventDefault();
     const name = exerciseInput.value.trim();
     if (!name) {
-      new Notice("Type a name first.");
+      new Notice(t("typeNameFirst"));
       return;
     }
     exerciseButton.disabled = true;
-    exerciseButton.textContent = "Saving...";
+    exerciseButton.textContent = t("saving");
     try {
       const created = await createExercise(name);
       exercises.push(created);
       await refreshAggregations();
       updateExerciseSelect();
       exerciseInput.value = "";
-      new Notice("Exercise created.");
+      new Notice(t("exerciseCreated"));
     } catch (error) {
       console.error(error);
-      new Notice(error?.message ?? "Could not create exercise.");
+      new Notice(error?.message ?? t("couldNotCreateExercise"));
     } finally {
       exerciseButton.disabled = false;
-      exerciseButton.textContent = "Create exercise";
+      exerciseButton.textContent = t("createExercise");
     }
   };
 
-  const sessionHeader = module.createEl("h3", { text: "Log a session" });
+  const sessionHeader = module.createEl("h3", { text: t("logSession") });
   sessionHeader.style.marginTop = "1rem";
 
   const sessionForm = module.createEl("form");
@@ -365,12 +444,12 @@ const run = async () => {
   selectEl.style.flex = "1";
   exerciseSelect = selectEl;
   const loadInput = sessionForm.createEl("input", {
-    attr: { type: "number", placeholder: "Load", step: "0.5", min: "0" },
+    attr: { type: "number", placeholder: t("loadPlaceholder"), step: "0.5", min: "0" },
   });
   loadInput.style.flex = "0 0 110px";
 
   const repsInput = sessionForm.createEl("input", {
-    attr: { type: "number", placeholder: "Reps", min: "1", step: "1" },
+    attr: { type: "number", placeholder: t("repsPlaceholder"), min: "1", step: "1" },
   });
   repsInput.style.flex = "0 0 90px";
 
@@ -380,11 +459,11 @@ const run = async () => {
   dateInput.style.flex = "0 0 150px";
 
   const notesInput = sessionForm.createEl("input", {
-    attr: { type: "text", placeholder: "Notes (optional)" },
+    attr: { type: "text", placeholder: t("notesPlaceholder") },
   });
   notesInput.style.flex = "1";
 
-  const sessionButton = sessionForm.createEl("button", { text: "Add session" });
+  const sessionButton = sessionForm.createEl("button", { text: t("addSession") });
   sessionButton.type = "submit";
 
   let updateExerciseSelect = () => {};
@@ -434,13 +513,13 @@ const run = async () => {
   sessionForm.onsubmit = async (event) => {
     event.preventDefault();
     if (exercises.length === 0) {
-      new Notice("Create an exercise first.");
+      new Notice(t("createExerciseFirst"));
       return;
     }
 
     const selectedExercise = exerciseSelect.value;
     if (!selectedExercise) {
-      new Notice("Choose an exercise.");
+      new Notice(t("chooseExercise"));
       return;
     }
 
@@ -450,16 +529,16 @@ const run = async () => {
     const notesValue = notesInput.value.trim();
 
     if (!isFinite(loadValue) || loadValue <= 0) {
-      new Notice("Provide a valid load.");
+      new Notice(t("invalidLoad"));
       return;
     }
     if (!Number.isFinite(repsValue) || repsValue <= 0) {
-      new Notice("Provide valid reps.");
+      new Notice(t("invalidReps"));
       return;
     }
 
     sessionButton.disabled = true;
-    sessionButton.textContent = "Saving...";
+    sessionButton.textContent = t("saving");
     try {
       const exerciseEntry = exercises.find(
         (exercise) => exercise.name.toLowerCase() === selectedExercise.toLowerCase()
@@ -476,13 +555,13 @@ const run = async () => {
       loadInput.value = "";
       repsInput.value = "";
       notesInput.value = "";
-      new Notice("Session logged.");
+      new Notice(t("sessionLogged"));
     } catch (error) {
       console.error(error);
-      new Notice("Could not save the session.");
+      new Notice(t("couldNotSaveSession"));
     } finally {
       sessionButton.disabled = false;
-      sessionButton.textContent = "Add session";
+      sessionButton.textContent = t("addSession");
     }
   };
 

@@ -10,6 +10,70 @@ const run = async () => {
   const currentYear = today.format("YYYY");
   const currentMonthName = today.format("MMMM");
 
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
+  const currency = (settingsPage.currency || "BRL").toUpperCase();
+
+  const monthTranslations = {
+    January: { short: "jan", full: "janeiro" },
+    February: { short: "fev", full: "fevereiro" },
+    March: { short: "mar", full: "março" },
+    April: { short: "abr", full: "abril" },
+    May: { short: "mai", full: "maio" },
+    June: { short: "jun", full: "junho" },
+    July: { short: "jul", full: "julho" },
+    August: { short: "ago", full: "agosto" },
+    September: { short: "set", full: "setembro" },
+    October: { short: "out", full: "outubro" },
+    November: { short: "nov", full: "novembro" },
+    December: { short: "dez", full: "dezembro" },
+  };
+
+  const translations = {
+    en: {
+      welcomeBack: "Welcome back,",
+      level: "Level",
+      xpSuffix: "XP",
+      investedLabel: "Invested this month",
+      openTasksLabel: "Open tasks",
+      tasksHint: ({ total }) => `${total} total`,
+      trainingLabel: "Training sessions",
+      balanceLabel: "Financial balance",
+      monthHint: ({ shortLabel }) => shortLabel,
+      monthFullHint: ({ fullLabel }) => fullLabel,
+    },
+    pt: {
+      welcomeBack: "Bem-vindo de volta,",
+      level: "Nível",
+      xpSuffix: "XP",
+      investedLabel: "Investido no mês",
+      openTasksLabel: "Tarefas em aberto",
+      tasksHint: ({ total }) => `${total} no total`,
+      trainingLabel: "Treinos no mês",
+      balanceLabel: "Balanço financeiro",
+      monthHint: ({ shortLabel }) => shortLabel,
+      monthFullHint: ({ fullLabel }) => fullLabel,
+    },
+  };
+
+  const translate = (key, data = {}) => {
+    const entry =
+      translations[language]?.[key] ??
+      translations.en[key] ??
+      key;
+    return typeof entry === "function" ? entry(data) : entry;
+  };
+
+  const localizedMonthShort =
+    language === "pt"
+      ? `${monthTranslations[currentMonthName]?.short ?? today.format("MMM").toLowerCase()} ${currentYear}`
+      : monthLabel;
+
+  const localizedMonthFull =
+    language === "pt"
+      ? `${monthTranslations[currentMonthName]?.full ?? currentMonthName.toLowerCase()} ${currentYear}`
+      : `${currentMonthName} ${currentYear}`;
+
   const container = dv.container.createEl("div", { cls: "landing-overview" });
   container.style.display = "flex";
   container.style.flexDirection = "column";
@@ -46,9 +110,14 @@ const run = async () => {
     return null;
   })();
 
+  const currencySymbols = {
+    BRL: { prefix: "R$", format: (value) => Number(value).toFixed(2).replace(".", ",") },
+    USD: { prefix: "$", format: (value) => Number(value).toFixed(2) },
+  };
+  const currencyConfig = currencySymbols[currency] || currencySymbols.BRL;
   const formatCurrency = (value) => {
     if (value === null || value === undefined || isNaN(value)) return "—";
-    return `R$ ${Number(value).toFixed(2).replace(".", ",")}`;
+    return `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
   };
 
   const extractFields = (line) => {
@@ -322,7 +391,7 @@ const run = async () => {
   }
 
   const headerInfo = header.createEl("div");
-  headerInfo.createEl("p", { text: "Welcome back," }).style.margin = "0";
+  headerInfo.createEl("p", { text: translate("welcomeBack") }).style.margin = "0";
   const nameEl = headerInfo.createEl("h2", { text: profileName });
   nameEl.style.margin = "0";
   nameEl.style.fontSize = "1.6rem";
@@ -339,9 +408,9 @@ const run = async () => {
   levelLabel.style.display = "flex";
   levelLabel.style.justifyContent = "space-between";
   levelLabel.style.fontWeight = "600";
-  levelLabel.textContent = `Level ${level}`;
+  levelLabel.textContent = `${translate("level")} ${level}`;
   levelCard.createEl("span", {
-    text: `${currentProgress}/1000 XP`,
+    text: `${currentProgress}/1000 ${translate("xpSuffix")}`,
   }).style.fontSize = "0.85rem";
 
   const progressTrack = levelCard.createEl("div");
@@ -363,24 +432,24 @@ const run = async () => {
 
   [
     {
-      label: "Invested this month",
+      label: translate("investedLabel"),
       value: formatCurrency(investedThisMonth),
-      hint: monthLabel,
+      hint: translate("monthHint", { shortLabel: localizedMonthShort }),
     },
     {
-      label: "Open tasks",
+      label: translate("openTasksLabel"),
       value: `${tasks.unfinished}`,
-      hint: `${tasks.total} total`,
+      hint: translate("tasksHint", { total: tasks.total }),
     },
     {
-      label: "Training sessions",
+      label: translate("trainingLabel"),
       value: `${trainingThisMonth}`,
-      hint: `${currentMonthName} ${currentYear}`,
+      hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
     },
     {
-      label: "Financial balance",
+      label: translate("balanceLabel"),
       value: formatCurrency(balance),
-      hint: `${currentMonthName} ${currentYear}`,
+      hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
     },
   ].forEach((metric) => {
     const card = metricsWrapper.createEl("div");
@@ -407,74 +476,72 @@ const run = async () => {
 run();
 ```
 
-<div class="landing-buttons" style="display:flex; flex-wrap:wrap; gap:0.75rem;">
+```dataviewjs
+const run = async () => {
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
 
-```meta-bind-button
-label: Finance
-icon: briefcase
-style: primary
-class: ""
-cssStyle: "flex:1 1 160px;"
-backgroundImage: ""
-tooltip: ""
-id: ""
-hidden: false
-actions:
-  - type: open
-    link: "[[Finance]]"
-    newTab: false
+  const translations = {
+    en: {
+      finance: "Finance",
+      todo: "To-do",
+      investments: "Investments",
+      training: "Training",
+      config: "Config",
+    },
+    pt: {
+      finance: "Finanças",
+      todo: "Tarefas",
+      investments: "Investimentos",
+      training: "Treinos",
+      config: "Configurações",
+    },
+  };
 
+  const t = (key) =>
+    translations[language]?.[key] ??
+    translations.en[key] ??
+    key;
+
+  const container = dv.container.createEl("div", { cls: "landing-buttons" });
+  container.style.display = "flex";
+  container.style.flexWrap = "wrap";
+  container.style.gap = "0.75rem";
+
+  const buttons = [
+    { key: "finance", icon: "💼", link: "Finance" },
+    { key: "todo", icon: "✅", link: "Todo" },
+    { key: "investments", icon: "📈", link: "Investments" },
+    { key: "training", icon: "🏋️", link: "Training" },
+    { key: "config", icon: "⚙️", link: "Config" },
+  ];
+
+  buttons.forEach((btn) => {
+    const button = container.createEl("button");
+    button.style.flex = "1 1 160px";
+    button.style.display = "flex";
+    button.style.alignItems = "center";
+    button.style.justifyContent = "center";
+    button.style.gap = "0.35rem";
+    button.style.padding = "0.65rem";
+    button.style.border = "1px solid var(--background-modifier-border)";
+    button.style.borderRadius = "8px";
+    button.style.background = "var(--interactive-accent)";
+    button.style.color = "var(--text-on-accent)";
+    button.style.cursor = "pointer";
+    button.style.fontWeight = "600";
+    button.style.fontSize = "1rem";
+
+    const icon = button.createEl("span", { text: btn.icon });
+    icon.ariaHidden = "true";
+
+    button.createEl("span", { text: t(btn.key) });
+
+    button.onclick = () => {
+      app.workspace.openLinkText(btn.link, "", false);
+    };
+  });
+};
+
+run();
 ```
-
-```meta-bind-button
-label: To-do
-icon: check
-style: primary
-class: ""
-cssStyle: "flex:1 1 160px;"
-backgroundImage: ""
-tooltip: ""
-id: ""
-hidden: false
-actions:
-  - type: open
-    link: "[[Todo]]"
-    newTab: false
-
-```
-
-```meta-bind-button
-label: Investments
-icon: chart-line
-style: primary
-class: ""
-cssStyle: "flex:1 1 160px;"
-backgroundImage: ""
-tooltip: ""
-id: ""
-hidden: false
-actions:
-  - type: open
-    link: "[[Investments]]"
-    newTab: false
-
-```
-
-```meta-bind-button
-label: Training
-icon: dumbbell
-style: primary
-class: ""
-cssStyle: "flex:1 1 160px;"
-backgroundImage: ""
-tooltip: ""
-id: ""
-hidden: false
-actions:
-  - type: open
-    link: "[[Training]]"
-    newTab: false
-
-```
-
-</div>
