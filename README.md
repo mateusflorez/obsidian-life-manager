@@ -8,6 +8,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
 - `Finance.md` + `finance/<year>/<Month>.md`: dashboards and monthly notes (use English month names, e.g., `finance/2025/November.md`).
 - `Todo.md` + `todo/tasks.md`: task manager where states persist in the frontmatter.
 - `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
+- `Training.md` hub + `training/exercises/`: workout dashboard with exercise creator, per-exercise session lists, calendar heatmap, and inline charts.
 - `profile/`: stores `stats.md` (user data) and `pfp.*` (avatar rendered on the Landing page).
 - `templates/`: Templater files used by the Meta Bind buttons (new finance month, new investment, etc.).
 
@@ -33,8 +34,14 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
    - In `Investments.md`, type the new total amount; the script saves only the delta with today’s date and (optionally) your custom tag.
    - A Chart.js line chart tracks the last 12 months of growth per investment.
 
-5. **Templates**
+5. **Training**
+   - Open `Training.md` to create exercises (notes live under `training/exercises/` and ship with a volume chart).
+   - Each exercise note keeps its own `## Sessions` list via lines like `- date:: 2025-11-10 load:: 100 reps:: 5`.
+   - The Training hub aggregates all exercises to show last sessions, total volume, and a calendar heatmap, while each note renders its personal chart + table.
+
+6. **Templates**
    - `templates/new finance month.md`: default structure for Expenses/Income.
+   - `templates/new training exercise.md`: skeleton for every exercise note (volume chart included).
    - Additional templates can be triggered via Meta Bind for new investments or other workflows.
 
 ## ✅ Requirements

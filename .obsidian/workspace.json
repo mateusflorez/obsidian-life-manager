@@ -4,13 +4,12 @@
     "type": "split",
     "children": [
       {
-        "id": "b9b523dce9d9ef8f",
+        "id": "87992a71c8fb6734",
         "type": "tabs",
         "children": [
           {
-            "id": "174b7f24b33c5273",
+            "id": "3347ec63467bca09",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "markdown",
               "state": {
@@ -18,7 +17,6 @@
                 "mode": "preview",
                 "source": false
               },
-              "pinned": true,
               "icon": "lucide-file",
               "title": "Landing"
             }
@@ -173,14 +171,23 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "174b7f24b33c5273",
+  "active": "3347ec63467bca09",
   "lastOpenFiles": [
-    "profile/stats.md",
-    "Todo.md",
-    "Landing.md",
-    "AGENTS.md",
+    "Training.md",
     "Investments.md",
+    "Landing.md",
+    "Todo.md",
+    "training/exercises/Squats.md",
+    "training/training.md",
+    "README.md",
+    "templates/new training exercise.md",
+    "templates/new",
     "Finance.md",
+    "training/exercises",
+    "training",
+    "2025-11-11.md",
+    "profile/stats.md",
+    "AGENTS.md",
     "config/consts.md",
     "CLAUDE.md",
     "config",
@@ -190,7 +197,6 @@
     "templates/new investment.md",
     "templates/stats template.md",
     "todo/tasks.md",
-    "README.md",
     "investments/Automatic Reserve.md",
     "investments/Piggy Bank.md",
     "investments/Home Purchase.md",
@@ -199,18 +205,10 @@
     "investments/Porquinho.md",
     "profile/pfp.jpg",
     "profile",
-    "templates/new task manager.md",
     "investments",
     "todo",
-    "teste.md",
-    "finance/month/2025-11.md",
     "finance/month",
     "Templates",
-    "templates/Finance Month.md",
-    "templates",
-    "finance/2025",
-    "finance/october 2 1/October.md",
-    "finance/october 2 1",
-    "finance/october 2"
+    "templates"
   ]
 }

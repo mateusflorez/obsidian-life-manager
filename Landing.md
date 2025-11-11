@@ -51,6 +51,16 @@ const run = async () => {
     return `R$ ${Number(value).toFixed(2).replace(".", ",")}`;
   };
 
+  const extractFields = (line) => {
+    const fields = {};
+    const regex = /([a-z]+)::\s*([^#\n]+?)(?=\s+[a-z]+::|$)/gi;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      fields[match[1].toLowerCase()] = match[2].trim();
+    }
+    return fields;
+  };
+
   const makeId = (text) =>
     text
       .toLowerCase()
@@ -195,6 +205,48 @@ const run = async () => {
     return total;
   };
 
+  const getMonthlyTrainingSessions = async () => {
+    const folder = "training/exercises";
+    const pages = dv
+      .pages(`"${folder}"`)
+      .where((p) => p.file.path.startsWith(`${folder}/`));
+    if (pages.length === 0) return 0;
+
+    const sessionsHeading = "Sessions";
+    const sectionRegex = new RegExp(
+      `##\\s*${sessionsHeading}[^\\n]*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`,
+      "i"
+    );
+
+    let total = 0;
+
+    for (const page of pages) {
+      try {
+        const content = await dv.io.load(page.file.path);
+        const match = sectionRegex.exec(content);
+        const body = match ? match[1] : "";
+        body
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("-"))
+          .forEach((line) => {
+            const fields = extractFields(line);
+            const dateValue = fields.date ?? null;
+            if (!dateValue) return;
+            const date = window.moment(dateValue, "YYYY-MM-DD", true);
+            if (!date.isValid()) return;
+            if (date.isSame(today, "month") && date.isSame(today, "year")) {
+              total += 1;
+            }
+          });
+      } catch (error) {
+        console.warn("Could not read exercise note:", page.file.path, error);
+      }
+    }
+
+    return total;
+  };
+
   const getFinanceBalance = async () => {
     const noteName =
       currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
@@ -232,11 +284,12 @@ const run = async () => {
     }
   };
 
-  const [tasks, investedThisMonth, balance, xp] = await Promise.all([
+  const [tasks, investedThisMonth, balance, xp, trainingThisMonth] = await Promise.all([
     getTasksSummary(),
     getMonthlyInvestments(),
     getFinanceBalance(),
     getXp(),
+    getMonthlyTrainingSessions(),
   ]);
 
   const level = Math.floor(xp / 1000);
@@ -320,6 +373,11 @@ const run = async () => {
       hint: `${tasks.total} total`,
     },
     {
+      label: "Training sessions",
+      value: `${trainingThisMonth}`,
+      hint: `${currentMonthName} ${currentYear}`,
+    },
+    {
       label: "Financial balance",
       value: formatCurrency(balance),
       hint: `${currentMonthName} ${currentYear}`,
@@ -349,12 +407,14 @@ const run = async () => {
 run();
 ```
 
+<div class="landing-buttons" style="display:flex; flex-wrap:wrap; gap:0.75rem;">
+
 ```meta-bind-button
 label: Finance
 icon: briefcase
 style: primary
 class: ""
-cssStyle: ""
+cssStyle: "flex:1 1 160px;"
 backgroundImage: ""
 tooltip: ""
 id: ""
@@ -371,7 +431,7 @@ label: To-do
 icon: check
 style: primary
 class: ""
-cssStyle: ""
+cssStyle: "flex:1 1 160px;"
 backgroundImage: ""
 tooltip: ""
 id: ""
@@ -388,7 +448,7 @@ label: Investments
 icon: chart-line
 style: primary
 class: ""
-cssStyle: ""
+cssStyle: "flex:1 1 160px;"
 backgroundImage: ""
 tooltip: ""
 id: ""
@@ -399,3 +459,22 @@ actions:
     newTab: false
 
 ```
+
+```meta-bind-button
+label: Training
+icon: dumbbell
+style: primary
+class: ""
+cssStyle: "flex:1 1 160px;"
+backgroundImage: ""
+tooltip: ""
+id: ""
+hidden: false
+actions:
+  - type: open
+    link: "[[Training]]"
+    newTab: false
+
+```
+
+</div>

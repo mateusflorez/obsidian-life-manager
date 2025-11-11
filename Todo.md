@@ -72,6 +72,26 @@ const run = async () => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
+  const parseTaskContent = (rawText) => {
+    let dateTag = null;
+    let timeTag = null;
+    let cleaned = rawText;
+
+    cleaned = cleaned.replace(/#(\d{4}-\d{2}-\d{2})\b/g, (_, value) => {
+      if (!dateTag) dateTag = value;
+      return "";
+    });
+
+    cleaned = cleaned.replace(/#((?:[01]?\d|2[0-3]):[0-5]\d)\b/g, (_, value) => {
+      if (!timeTag) timeTag = value;
+      return "";
+    });
+
+    cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+
+    return { text: cleaned, dateTag, timeTag };
+  };
+
   const canonicalHeadings = sections.map((s) => s.heading);
   const sectionLines = {};
   let currentKey = null;
@@ -99,8 +119,14 @@ const run = async () => {
     return lines
       .filter((line) => line.startsWith("-"))
       .map((line, idx) => {
-        const text = line.replace(/^-\s*/, "").trim();
-        return { text, id: makeId(text) || `${heading}-${idx + 1}` };
+        const parsed = parseTaskContent(line.replace(/^-\s*/, "").trim());
+        const baseText = parsed.text || "";
+        return {
+          text: baseText,
+          id: makeId(baseText) || `${heading}-${idx + 1}`,
+          dateTag: parsed.dateTag,
+          timeTag: parsed.timeTag,
+        };
       })
       .filter((item) => item.text.length > 0);
   };
@@ -209,7 +235,7 @@ const run = async () => {
     await app.vault.modify(statsFile, content);
   };
 
-  const createRow = (parent, labelText) => {
+  const createRow = (parent, labelText, metaParts = []) => {
     const row = parent.createEl("label", { cls: "todo-row" });
     row.style.display = "flex";
     row.style.alignItems = "center";
@@ -219,9 +245,20 @@ const run = async () => {
     const checkbox = row.createEl("input", { type: "checkbox" });
     checkbox.style.margin = "0";
 
-    const textEl = row.createEl("span", { text: labelText });
-    textEl.style.flex = "1";
-    textEl.style.wordBreak = "break-word";
+    const textWrapper = row.createEl("div");
+    textWrapper.style.flex = "1";
+    textWrapper.style.wordBreak = "break-word";
+    textWrapper.style.display = "flex";
+    textWrapper.style.flexDirection = "column";
+    textWrapper.style.gap = "0.1rem";
+
+    textWrapper.createEl("span", { text: labelText });
+
+    if (metaParts.length) {
+      const meta = textWrapper.createEl("span", { text: metaParts.join(" • ") });
+      meta.style.fontSize = "0.8em";
+      meta.style.color = "var(--text-muted)";
+    }
 
     return { checkbox, row };
   };
@@ -244,8 +281,9 @@ const run = async () => {
       if (!removed) {
         const trimmed = line.trim();
         if (trimmed.startsWith("-")) {
-          const text = trimmed.replace(/^-\s*/, "").trim();
-          if (makeId(text) === id) {
+          const parsed = parseTaskContent(trimmed.replace(/^-\s*/, "").trim());
+          const candidateId = makeId(parsed.text || "") || "";
+          if (candidateId === id) {
             removed = true;
             continue;
           }
@@ -284,12 +322,23 @@ const run = async () => {
 
     const form = wrapper.createEl("form");
     form.style.display = "flex";
+    form.style.flexWrap = "wrap";
     form.style.gap = "0.35rem";
     form.style.marginBottom = "0.5rem";
     const input = form.createEl("input", {
       attr: { type: "text", placeholder: `Add to ${section.title}` },
     });
     input.style.flex = "1";
+    const dateInput = form.createEl("input", {
+      attr: { type: "date", "aria-label": "Date (optional)" },
+    });
+    dateInput.style.flex = "0 0 auto";
+    dateInput.style.minWidth = "11rem";
+    const timeInput = form.createEl("input", {
+      attr: { type: "time", "aria-label": "Time (optional)" },
+    });
+    timeInput.style.flex = "0 0 auto";
+    timeInput.style.minWidth = "7rem";
     const button = form.createEl("button", { text: "Add" });
     button.type = "submit";
     button.style.cursor = "pointer";
@@ -301,12 +350,22 @@ const run = async () => {
         new Notice("Type a task description first.");
         return;
       }
+      const dateValue = dateInput.value.trim();
+      const timeValue = timeInput.value.trim();
+
+      const parts = [text];
+      if (dateValue) parts.push(`#${dateValue}`);
+      if (timeValue) parts.push(`#${timeValue}`);
+      const composedText = parts.join(" ");
+
       button.disabled = true;
       button.textContent = "Saving...";
       try {
-        await insertTask(section.heading, text);
+        await insertTask(section.heading, composedText);
         new Notice("Task added! Reload the note to see it here.");
         input.value = "";
+        dateInput.value = "";
+        timeInput.value = "";
       } catch (error) {
         console.error(error);
         new Notice("Could not add the task.");
@@ -323,7 +382,10 @@ const run = async () => {
     const statusMap = statusCache[statusField] ?? {};
 
     items.forEach((item) => {
-      const { checkbox, row } = createRow(wrapper, item.text);
+      const metaParts = [];
+      if (item.dateTag) metaParts.push(`#${item.dateTag}`);
+      if (item.timeTag) metaParts.push(`#${item.timeTag}`);
+      const { checkbox, row } = createRow(wrapper, item.text, metaParts);
 
       if (section.type === "boolean") {
         let doneState = Boolean(statusMap[item.id]);
