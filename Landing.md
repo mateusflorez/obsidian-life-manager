@@ -1,3 +1,4 @@
+
 # Landing Hub
 
 ```meta-bind-button
@@ -13,6 +14,23 @@ hidden: false
 actions:
   - type: open
     link: "[[Finance]]"
+    newTab: false
+
+```
+
+```meta-bind-button
+label: To-do
+icon: check
+style: primary
+class: ""
+cssStyle: ""
+backgroundImage: ""
+tooltip: ""
+id: ""
+hidden: false
+actions:
+  - type: open
+    link: "[[Todo]]"
     newTab: false
 
 ```
