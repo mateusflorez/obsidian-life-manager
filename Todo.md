@@ -2,6 +2,7 @@
 todoStatus: {}
 dailyStatus:
   update-investments: 2025-11-11
+  take-creatine: 2025-11-11
 weeklyStatus: {}
 monthlyStatus: {}
 ---

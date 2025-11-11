@@ -5,3 +5,5 @@ investments/*
 profile/*
 training/exercises/*
 books/*
+config/settings.md
+!**/.gitkeep
