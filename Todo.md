@@ -1,6 +1,5 @@
 ---
-todoStatus:
-  wash-towel-and-bedsheets: false
+todoStatus: {}
 dailyStatus: {}
 weeklyStatus: {}
 monthlyStatus: {}
@@ -224,7 +223,50 @@ const run = async () => {
     textEl.style.flex = "1";
     textEl.style.wordBreak = "break-word";
 
-    return checkbox;
+    return { checkbox, row };
+  };
+
+  const removeTask = async (heading, id) => {
+    const file = app.vault.getAbstractFileByPath(tasksPath);
+    if (!file) return false;
+
+    const content = await app.vault.read(file);
+    const sectionRegex = new RegExp(`(##\\s*${heading}[^\\n]*\\n)([\\s\\S]*?)(?=\\n##\\s+|$)`, "i");
+    const match = sectionRegex.exec(content);
+    if (!match) return false;
+
+    const hadTrailingNewline = match[2].endsWith("\n");
+    const lines = match[2].split("\n");
+    let removed = false;
+    const newLines = [];
+
+    for (const line of lines) {
+      if (!removed) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("-")) {
+          const text = trimmed.replace(/^-\s*/, "").trim();
+          if (makeId(text) === id) {
+            removed = true;
+            continue;
+          }
+        }
+      }
+      newLines.push(line);
+    }
+
+    if (!removed) return false;
+
+    let newBody = newLines.join("\n");
+    if (newBody && hadTrailingNewline && !newBody.endsWith("\n")) {
+      newBody += "\n";
+    }
+
+    const updatedSection = match[1] + newBody;
+    const updatedContent =
+      content.slice(0, match.index) + updatedSection + content.slice(match.index + match[0].length);
+
+    await app.vault.modify(file, updatedContent);
+    return true;
   };
 
   for (const section of sections) {
@@ -281,7 +323,7 @@ const run = async () => {
     const statusMap = statusCache[statusField] ?? {};
 
     items.forEach((item) => {
-      const checkbox = createRow(wrapper, item.text);
+      const { checkbox, row } = createRow(wrapper, item.text);
 
       if (section.type === "boolean") {
         let doneState = Boolean(statusMap[item.id]);
@@ -300,6 +342,19 @@ const run = async () => {
 
           if (isCompleting) {
             await incrementXp();
+            if (section.key === "todo") {
+              try {
+                const removed = await removeTask(section.heading, item.id);
+                if (removed) {
+                  await persistStatus(statusField, item.id, null);
+                  row.remove();
+                  new Notice("Task completed and removed.");
+                }
+              } catch (error) {
+                console.error(error);
+                new Notice("Task completed but could not be removed.");
+              }
+            }
           }
         };
       } else {
