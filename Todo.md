@@ -1,6 +1,7 @@
 ---
 todoStatus: {}
-dailyStatus: {}
+dailyStatus:
+  update-investments: 2025-11-11
 weeklyStatus: {}
 monthlyStatus: {}
 ---
@@ -280,6 +281,23 @@ const run = async () => {
     await app.vault.modify(statsFile, content);
   };
 
+  const incrementCompletedTasks = async () => {
+    const statsFile = app.vault.getAbstractFileByPath(statsPath);
+    if (!statsFile) return;
+    let content = await dv.io.load(statsPath);
+    const tasksRegex = /^(\s*-\s*completed tasks::\s*)(\d+)/im;
+    if (tasksRegex.test(content)) {
+      content = content.replace(tasksRegex, (_, prefix, value) => {
+        const current = Number(value) || 0;
+        return `${prefix}${current + 1}`;
+      });
+    } else {
+      const suffix = content.endsWith("\n") || content.length === 0 ? "" : "\n";
+      content = `${content}${suffix}- completed tasks:: 1\n`;
+    }
+    await app.vault.modify(statsFile, content);
+  };
+
   const createRow = (parent, labelText, metaParts = []) => {
     const row = parent.createEl("label", { cls: "todo-row" });
     row.style.display = "flex";
@@ -449,6 +467,7 @@ const run = async () => {
 
           if (isCompleting) {
             await incrementXp();
+            await incrementCompletedTasks();
             if (section.key === "todo") {
               try {
                 const removed = await removeTask(section.heading, item.id);
@@ -481,6 +500,7 @@ const run = async () => {
 
           if (isCompleting) {
             await incrementXp();
+            await incrementCompletedTasks();
           }
         };
       }

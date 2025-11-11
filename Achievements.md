@@ -180,101 +180,14 @@ const run = async () => {
     return total;
   };
 
-  const loadTasksCompleted = async () => {
-    let rawTasks = "";
+  const loadCompletedTasksStat = async () => {
     try {
-      rawTasks = await dv.io.load("todo/tasks.md");
+      const stats = await dv.io.load("profile/stats.md");
+      const match = stats.match(/^\s*-\s*completed tasks::\s*(\d+)/im);
+      return match ? Number(match[1]) || 0 : 0;
     } catch {
       return 0;
     }
-
-    const sections = [
-      { heading: "todo", type: "boolean", statusField: "todoStatus" },
-      { heading: "daily", type: "cycle", statusField: "dailyStatus", cycle: "day" },
-      { heading: "weekly", type: "cycle", statusField: "weeklyStatus", cycle: "week" },
-      { heading: "monthly", type: "cycle", statusField: "monthlyStatus", cycle: "month" },
-    ];
-
-    const sectionLines = {};
-    let currentHeading = null;
-    rawTasks.split("\n").forEach((rawLine) => {
-      const line = rawLine.replace(/\r$/, "");
-      const headingMatch = line.match(/^##\s+(.+)/i);
-      if (headingMatch) {
-        const normalized = headingMatch[1].trim().toLowerCase();
-        currentHeading =
-          sections.find((s) => normalized === s.heading)?.heading ||
-          sections.find((s) => normalized.startsWith(s.heading))?.heading ||
-          sections.find((s) => s.heading.startsWith(normalized))?.heading ||
-          normalized;
-        if (!sectionLines[currentHeading]) sectionLines[currentHeading] = [];
-        return;
-      }
-      if (!currentHeading) return;
-      sectionLines[currentHeading].push(line.trim());
-    });
-
-    const extractItems = (heading) => {
-      const lines = sectionLines[heading] ?? [];
-      return lines
-        .filter((line) => line.startsWith("-"))
-        .map((line, idx) => {
-          const text = line.replace(/^-\s*/, "").trim();
-          const id = text
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-+|-+$/g, "");
-          return { text, id: id || `${heading}-${idx + 1}` };
-        })
-        .filter((item) => item.text.length > 0);
-    };
-
-    const todoPage = dv.page("Todo") ?? {};
-    const today = window.moment();
-
-    const parseStoredDate = (value) => {
-      if (!value) return null;
-      if (window.moment.isMoment(value)) return value;
-      if (typeof value === "string") {
-        const parsed = window.moment(value, "YYYY-MM-DD", true);
-        return parsed.isValid() ? parsed : null;
-      }
-      if (value?.isLuxonDateTime && typeof value.toISODate === "function") {
-        return window.moment(value.toISODate(), "YYYY-MM-DD", true);
-      }
-      if (value instanceof Date) return window.moment(value);
-      return null;
-    };
-
-    const isCycleDone = (cycle, storedValue) => {
-      const date = parseStoredDate(storedValue);
-      if (!date || !date.isValid()) return false;
-      if (cycle === "day") return date.isSame(today, "day");
-      if (cycle === "week")
-        return date.isoWeek() === today.isoWeek() && date.isoWeekYear() === today.isoWeekYear();
-      if (cycle === "month") return date.isSame(today, "month");
-      return false;
-    };
-
-    let completed = 0;
-    sections.forEach((section) => {
-      const items = extractItems(section.heading);
-      const status = todoPage[section.statusField] ?? {};
-      items.forEach((item) => {
-        let done = false;
-        if (section.type === "boolean") {
-          done = Boolean(status[item.id]);
-        } else {
-          done = isCycleDone(section.cycle, status[item.id]);
-        }
-        if (done) completed += 1;
-      });
-    });
-
-    return completed;
   };
 
   const formatCurrency = (value) => {
@@ -306,7 +219,7 @@ const run = async () => {
   ] = await Promise.all([
     loadTotalChaptersRead(),
     loadTotalInvested(),
-    loadTasksCompleted(),
+    loadCompletedTasksStat(),
     loadTrainingSessions(),
     loadXpLevel(),
   ]);

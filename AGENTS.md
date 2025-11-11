@@ -84,9 +84,9 @@ git push origin main              # Publish updates
 - Logging any chapter (book card or standalone form) awards 20 XP by updating `profile/stats.md`.
 
 ### Achievements (`Achievements.md`)
-- Consolidates milestone cards for chapters/books, investments, tasks, training, and XP-based levels. Each card progresses through color tiers (gray → green → blue → purple → orange) with a mini progress bar until the goal is completed.
-- Reads live data from the source modules: total chapters read (books + standalone entries), cumulative positive investment deltas, currently completed tasks (per section + cycle) from `Todo.md`, and total training sessions from `training/exercises/*`.
-- Currency targets (R$/USD) adapt to `config/settings.md`. No manual input is required—open the note to visualize current status, including the top summary card that shows total achievements completed.
+- Consolidates milestone cards for chapters/books, investments, tasks, training, and XP-based levels. Each card progresses through color tiers (gray → green → blue → purple → orange), shows a trophy (gray if pending, white when done), and uses a mini progress bar until the goal is completed.
+- Reads live data from the source modules: total chapters read (books + standalone entries), cumulative positive investment deltas, lifetime completed tasks pulled from `profile/stats.md` (`- completed tasks:: N`), total training sessions from `training/exercises/*`, and the current level (`xp / 1000`).
+- Currency targets (R$/USD) adapt to `config/settings.md`. A top summary card displays overall completion counts so you can see progress at a glance.
 
 ### Config & Profile (`Config.md`, `config/settings.md`, `profile/stats.md`)
 - `Config.md` exposes language and currency dropdowns that update `config/settings.md` frontmatter via the Obsidian API.
@@ -132,6 +132,7 @@ git push origin main              # Publish updates
 - Book chapters: `- chapter:: 3 finished:: 2025-05-22T13:00:00` entries appended under `## Chapters` inside each `books/<title>.md`.
 - Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
 - Each logged chapter (any method) increments XP by 20.
+- Completed tasks stat: Todo automations append/increment `- completed tasks:: N` in `profile/stats.md`; Achievements relies on this value for task milestones, so keep the line intact.
 - Achievements are derived data; no manual edits needed—keep the source modules consistent so totals remain accurate.
 
 ### Localization & Currency

@@ -52,7 +52,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
    - Preferences are stored in `config/settings.md`, so they sync across devices with the vault.
 
 8. **Achievements**
-   - Visit `Achievements.md` to see milestone cards (gray → green → blue → purple → orange) for chapters read, total invested, tasks completed, training sessions, and XP levels—each card shows a trophy and progress bar or “Concluído”.
+   - Visit `Achievements.md` to see milestone cards (gray → green → blue → purple → orange) for chapters read, total invested, tasks completed (via the `- completed tasks::` stat), training sessions, and XP levels—each card shows a trophy and progress bar or “Concluído”.
    - A summary card at the top displays overall achievement completion, so you instantly know how many milestones you’ve finished.
    - Progress updates automatically from the source modules, so keep logging data normally.
 
