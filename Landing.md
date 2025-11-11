@@ -222,11 +222,26 @@ const run = async () => {
     return income - expenses;
   };
 
-  const [tasks, investedThisMonth, balance] = await Promise.all([
+  const getXp = async () => {
+    try {
+      const stats = await dv.io.load("profile/stats.md");
+      const match = stats.match(/^\s*-\s*xp:\s*(\d+)/im);
+      return match ? Number(match[1]) || 0 : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const [tasks, investedThisMonth, balance, xp] = await Promise.all([
     getTasksSummary(),
     getMonthlyInvestments(),
     getFinanceBalance(),
+    getXp(),
   ]);
+
+  const level = Math.floor(xp / 1000);
+  const currentProgress = xp % 1000;
+  const progressPercent = Math.min(100, (currentProgress / 1000) * 100);
 
   const header = container.createEl("div");
   header.style.display = "flex";
@@ -258,6 +273,35 @@ const run = async () => {
   const nameEl = headerInfo.createEl("h2", { text: profileName });
   nameEl.style.margin = "0";
   nameEl.style.fontSize = "1.6rem";
+
+  const levelCard = container.createEl("div");
+  levelCard.style.display = "flex";
+  levelCard.style.flexDirection = "column";
+  levelCard.style.gap = "0.35rem";
+  levelCard.style.border = "1px solid var(--background-modifier-border)";
+  levelCard.style.borderRadius = "8px";
+  levelCard.style.padding = "0.75rem";
+
+  const levelLabel = levelCard.createEl("div");
+  levelLabel.style.display = "flex";
+  levelLabel.style.justifyContent = "space-between";
+  levelLabel.style.fontWeight = "600";
+  levelLabel.textContent = `Level ${level}`;
+  levelCard.createEl("span", {
+    text: `${currentProgress}/1000 XP`,
+  }).style.fontSize = "0.85rem";
+
+  const progressTrack = levelCard.createEl("div");
+  progressTrack.style.width = "100%";
+  progressTrack.style.height = "10px";
+  progressTrack.style.borderRadius = "999px";
+  progressTrack.style.background = "var(--background-modifier-border)";
+
+  const progressFill = progressTrack.createEl("div");
+  progressFill.style.height = "100%";
+  progressFill.style.borderRadius = "999px";
+  progressFill.style.background = "var(--interactive-accent)";
+  progressFill.style.width = `${progressPercent}%`;
 
   const metricsWrapper = container.createEl("div");
   metricsWrapper.style.display = "grid";

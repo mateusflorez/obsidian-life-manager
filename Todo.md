@@ -1,11 +1,34 @@
 ---
-todoStatus: {}
+todoStatus:
+  wash-towel-and-bedsheets: true
 dailyStatus: {}
 weeklyStatus: {}
 monthlyStatus: {}
 ---
 
-## ✅ To-do
+# To-do
+
+> [!info]
+> Keep routines aligned: edit `todo/tasks.md`, toggle progress here, and earn 50 XP every time you complete a task.
+
+```meta-bind-button
+label: Open tasks list
+icon: list-check
+style: primary
+class: ""
+cssStyle: ""
+backgroundImage: ""
+tooltip: ""
+id: ""
+hidden: false
+actions:
+  - type: open
+    link: "[[todo/tasks]]"
+    newTab: false
+
+```
+
+## Task board
 ```dataviewjs
 const run = async () => {
   const file = app.workspace.getActiveFile();
@@ -25,6 +48,8 @@ const run = async () => {
 
   const today = window.moment();
   const todayStr = today.format("YYYY-MM-DD");
+  const statsPath = "profile/stats.md";
+  const XP_INCREMENT = 50;
 
   const sections = [
     { key: "todo", title: "Todo", heading: "todo", type: "boolean" },
@@ -148,6 +173,23 @@ const run = async () => {
 
   const container = dv.container.createEl("div", { cls: "todo-module" });
 
+  const incrementXp = async () => {
+    const statsFile = app.vault.getAbstractFileByPath(statsPath);
+    if (!statsFile) return;
+    let content = await dv.io.load(statsPath);
+    const xpRegex = /^(\s*-\s*xp:\s*)(\d+)/im;
+    if (xpRegex.test(content)) {
+      content = content.replace(xpRegex, (_, prefix, value) => {
+        const current = Number(value) || 0;
+        return `${prefix}${current + XP_INCREMENT}`;
+      });
+    } else {
+      const suffix = content.endsWith("\n") || content.length === 0 ? "" : "\n";
+      content = `${content}${suffix}- xp: ${XP_INCREMENT}\n`;
+    }
+    await app.vault.modify(statsFile, content);
+  };
+
   const createRow = (parent, labelText) => {
     const row = parent.createEl("label", { cls: "todo-row" });
     row.style.display = "flex";
@@ -185,23 +227,44 @@ const run = async () => {
       const checkbox = createRow(wrapper, item.text);
 
       if (section.type === "boolean") {
-        checkbox.checked = Boolean(statusMap[item.id]);
-      } else {
-        checkbox.checked = isCycleDone(section.cycle, statusMap[item.id]);
-      }
+        let doneState = Boolean(statusMap[item.id]);
+        checkbox.checked = doneState;
 
-      checkbox.onchange = async () => {
-        checkbox.disabled = true;
-        const checked = checkbox.checked;
+        checkbox.onchange = async () => {
+          checkbox.disabled = true;
+          const checked = checkbox.checked;
+          const isCompleting = checked && !doneState;
 
-        if (section.type === "boolean") {
           await persistStatus(statusField, item.id, checked);
-        } else {
-          await persistStatus(statusField, item.id, checked ? todayStr : null);
-        }
 
-        checkbox.disabled = false;
-      };
+          checkbox.checked = checked;
+          checkbox.disabled = false;
+          doneState = checked;
+
+          if (isCompleting) {
+            await incrementXp();
+          }
+        };
+      } else {
+        let doneState = isCycleDone(section.cycle, statusMap[item.id]);
+        checkbox.checked = doneState;
+
+        checkbox.onchange = async () => {
+          checkbox.disabled = true;
+          const checked = checkbox.checked;
+          const isCompleting = checked && !doneState;
+
+          await persistStatus(statusField, item.id, checked ? todayStr : null);
+
+          checkbox.checked = checked;
+          checkbox.disabled = false;
+          doneState = checked;
+
+          if (isCompleting) {
+            await incrementXp();
+          }
+        };
+      }
     });
   }
 };
