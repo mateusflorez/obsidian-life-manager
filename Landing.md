@@ -327,6 +327,42 @@ const run = async () => {
     const chaptersRegex = /##\s*Chapters[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i;
     let total = 0;
 
+    const parseFinishedMoment = (value) => {
+      if (!value) return null;
+      const iso = window.moment(value, window.moment.ISO_8601, true);
+      if (iso.isValid()) return iso;
+      const fallback = window.moment(value, "YYYY-MM-DD HH:mm", true);
+      return fallback.isValid() ? fallback : null;
+    };
+
+    const loadEntryFinishedDate = async (page) => {
+      const candidates = [
+        page.finishedat,
+        page.finishedAt,
+        page.file?.frontmatter?.finishedAt,
+      ];
+      for (const candidate of candidates) {
+        const parsed = parseFinishedMoment(candidate);
+        if (parsed) return parsed;
+      }
+      try {
+        const content = await dv.io.load(page.file.path);
+        const frontmatterMatch = content.match(/finishedAt:\s*(.+)/i);
+        if (frontmatterMatch) {
+          const parsed = parseFinishedMoment(frontmatterMatch[1].trim());
+          if (parsed) return parsed;
+        }
+        const bodyMatch = content.match(/finished in:\s*([^\n]+)/i);
+        if (bodyMatch) {
+          const parsed = parseFinishedMoment(bodyMatch[1].trim());
+          if (parsed) return parsed;
+        }
+      } catch (error) {
+        console.warn("Could not load standalone chapter:", page.file?.path, error);
+      }
+      return null;
+    };
+
     for (const page of pages) {
       const type = (
         page.booktype ??
@@ -338,14 +374,13 @@ const run = async () => {
         .toLowerCase();
 
       if (type === "entry") {
-        const finishedValue =
-          page.finishedat ??
-          page.finishedAt ??
-          page.file?.frontmatter?.finishedAt ??
-          null;
-        if (!finishedValue) continue;
-        const finished = window.moment(finishedValue, window.moment.ISO_8601, true);
-        if (finished.isValid() && finished.isSame(today, "month") && finished.isSame(today, "year")) {
+        const finished = await loadEntryFinishedDate(page);
+        if (
+          finished &&
+          finished.isValid() &&
+          finished.isSame(today, "month") &&
+          finished.isSame(today, "year")
+        ) {
           total += 1;
         }
         continue;
