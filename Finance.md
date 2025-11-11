@@ -34,119 +34,44 @@ views:
 # Finance
 
 > [!info]
-> Use the form below to create a finance month with the correct `finance/<year>/<Month>.md` path.
+> Use the form below to create a finance month with the correct `finance/<account>/<year>/<Month>.md` path.
 
 ```dataviewjs
 const run = async () => {
-  const templatePath = "templates/new finance month.md";
-  const container = dv.container.createEl("div", { cls: "finance-month-creator" });
-  container.style.border = "1px solid var(--background-modifier-border)";
-  container.style.borderRadius = "10px";
-  container.style.padding = "1rem";
-  container.style.marginBottom = "1rem";
-  container.style.display = "flex";
-  container.style.flexDirection = "column";
-  container.style.gap = "0.5rem";
+  const FINANCE_ROOT = "finance";
+  const ACCOUNTS_FILE = `${FINANCE_ROOT}/accounts.json`;
+  const STORAGE_KEY = "life-manager-finance-account";
 
-  container.createEl("strong", { text: "New finance month" });
+  const settingsPage = dv.page("config/settings") ?? {};
+  const language = (settingsPage.language || "en").toLowerCase();
 
-  const form = container.createEl("form");
-  form.style.display = "flex";
-  form.style.flexWrap = "wrap";
-  form.style.gap = "0.5rem";
-
-  const today = window.moment();
-  const currentYear = today.year();
-  const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
-  const months = window.moment.months();
-
-  const yearSelect = form.createEl("select");
-  yearSelect.style.flex = "0 0 140px";
-  years.forEach((year) => {
-    yearSelect.createEl("option", { text: year, value: year });
-  });
-  yearSelect.value = currentYear;
-
-  const monthSelect = form.createEl("select");
-  monthSelect.style.flex = "1 1 200px";
-  months.forEach((month) => {
-    monthSelect.createEl("option", { text: month, value: month });
-  });
-  monthSelect.value = today.format("MMMM");
-
-  const submitBtn = form.createEl("button", { text: "Create month" });
-  submitBtn.type = "submit";
-  submitBtn.style.cursor = "pointer";
-
-  const loadTemplate = (() => {
-    let cache = null;
-    let tried = false;
-    return async () => {
-      if (tried) return cache;
-      tried = true;
-      try {
-        cache = await dv.io.load(templatePath);
-      } catch (error) {
-        console.warn("Could not load finance template.", error);
-        cache = null;
-      }
-      return cache;
-    };
-  })();
-
-  const ensureFolder = async (folderPath) => {
-    if (app.vault.getAbstractFileByPath(folderPath)) return;
-    await app.vault.createFolder(folderPath);
+  const translations = {
+    en: {
+      accountLabel: "Account",
+      addAccountPlaceholder: "New account name",
+      addAccountBtn: "Create account",
+      accountExists: "Account already exists.",
+      accountCreated: "Account created.",
+      invalidAccount: "Provide a valid account name.",
+      missingAccount: "Create an account to start tracking finances.",
+      newMonthHeading: ({ account }) => `New finance month • ${account}`,
+    },
+    pt: {
+      accountLabel: "Conta",
+      addAccountPlaceholder: "Nome da nova conta",
+      addAccountBtn: "Criar conta",
+      accountExists: "A conta já existe.",
+      accountCreated: "Conta criada.",
+      invalidAccount: "Informe um nome válido.",
+      missingAccount: "Crie uma conta para começar a registrar finanças.",
+      newMonthHeading: ({ account }) => `Novo mês financeiro • ${account}`,
+    },
   };
 
-  const buildContent = async (monthName, year) => {
-    const template = await loadTemplate();
-    if (!template) {
-      return `# ${monthName} ${year}\n\n## Expenses\n\n## Income\n`;
-    }
-    return template
-      .replace(/<%\s*tp\.file\.title\s*%>/g, monthName)
-      .replace(/<%\s*moment\(\)\.format\('YYYY'\)\s*%>/g, year);
+  const t = (key, data = {}) => {
+    const value = translations[language]?.[key] ?? translations.en[key] ?? key;
+    return typeof value === "function" ? value(data) : value;
   };
-
-  form.onsubmit = async (event) => {
-    event.preventDefault();
-    const year = Number(yearSelect.value);
-    const monthName = monthSelect.value;
-    const folderPath = `finance/${year}`;
-    const targetPath = `${folderPath}/${monthName}.md`;
-    submitBtn.disabled = true;
-    const prevText = submitBtn.textContent;
-    submitBtn.textContent = "Creating...";
-    try {
-      await ensureFolder(folderPath);
-      if (app.vault.getAbstractFileByPath(targetPath)) {
-        new Notice(`Month already exists: ${targetPath}`);
-        app.workspace.openLinkText(targetPath, "", false);
-      } else {
-        const content = await buildContent(monthName, year);
-        await app.vault.create(targetPath, content);
-        new Notice(`Created ${targetPath}`);
-        app.workspace.openLinkText(targetPath, "", false);
-      }
-    } catch (error) {
-      console.error(error);
-      new Notice("Could not create the month.");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = prevText;
-    }
-  };
-};
-
-run();
-```
-
-```dataviewjs
-const run = async () => {
-  const cardsFolder = "finance/cards";
-  const recurrencesPath = "finance/recurrences.md";
-  const MONTH_FORMAT = "YYYY-MM";
 
   const slugify = (value = "") =>
     value
@@ -165,6 +90,47 @@ const run = async () => {
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, " ")
       .trim() || "card";
+
+  const ensureFolder = async (folderPath) => {
+    if (app.vault.getAbstractFileByPath(folderPath)) return;
+    try {
+      await app.vault.createFolder(folderPath);
+    } catch (error) {
+      if (!/exists/i.test(error?.message ?? "")) {
+        console.warn("Could not create folder:", folderPath, error);
+      }
+    }
+  };
+
+  const ensureRecurrenceFile = async (path) => {
+    const file = app.vault.getAbstractFileByPath(path);
+    if (file) return;
+    await app.vault.create(
+      path,
+      "# Recurring Expenses\n\n> [!info]\n> Managed via Finance dashboard. Edit with caution.\n\n## Recurrences\n"
+    );
+  };
+
+  const insertLine = async (path, heading, line) => {
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!file) throw new Error("File not found");
+    const content = await app.vault.read(file);
+    const sectionRegex = new RegExp(`(##\\s*${heading}[^\\n]*\\n)([\\s\\S]*?)(?=\\n##\\s+|$)`, "i");
+    const match = sectionRegex.exec(content);
+    const lineWithBreak = line.endsWith("\n") ? line : `${line}\n`;
+
+    if (match) {
+      const before = content.slice(0, match.index);
+      const afterContent = content.slice(match.index + match[0].length);
+      const body = match[2].trimEnd();
+      const newBody = `${body ? body + "\n" : ""}${lineWithBreak}`;
+      const updated = before + match[1] + newBody + afterContent;
+      await app.vault.modify(file, updated);
+    } else {
+      const updated = `${content.trim()}\n\n## ${heading}\n${lineWithBreak}`;
+      await app.vault.modify(file, updated);
+    }
+  };
 
   const parseFields = (line = "") => {
     const fields = {};
@@ -188,47 +154,6 @@ const run = async () => {
       .map(parseFields);
   };
 
-  const ensureFolder = async (folderPath) => {
-    if (app.vault.getAbstractFileByPath(folderPath)) return;
-    try {
-      await app.vault.createFolder(folderPath);
-    } catch (error) {
-      if (!/exists/i.test(error?.message ?? "")) {
-        console.warn("Could not create folder:", folderPath, error);
-      }
-    }
-  };
-
-  const ensureRecurrenceFile = async () => {
-    const file = app.vault.getAbstractFileByPath(recurrencesPath);
-    if (file) return;
-    await app.vault.create(
-      recurrencesPath,
-      "# Recurring Expenses\n\n> [!info]\n> Managed via Finance dashboard. Edit with caution.\n\n## Recurrences\n"
-    );
-  };
-
-  const insertLine = async (path, heading, line) => {
-    const file = app.vault.getAbstractFileByPath(path);
-    if (!file) return;
-    const content = await app.vault.read(file);
-    const sectionRegex = new RegExp(`(##\\s*${heading}[^\\n]*\\n)([\\s\\S]*?)(?=\\n##\\s+|$)`, "i");
-    const match = sectionRegex.exec(content);
-    const lineWithBreak = line.endsWith("\n") ? line : `${line}\n`;
-
-    if (match) {
-      const before = content.slice(0, match.index);
-      const afterContent = content.slice(match.index + match[0].length);
-      const body = match[2].trimEnd();
-      const newBody = `${body ? body + "\n" : ""}${lineWithBreak}`;
-      const updated = before + match[1] + newBody + afterContent;
-      await app.vault.modify(file, updated);
-    } else {
-      const updated = `${content.trim()}\n\n## ${heading}\n${lineWithBreak}`;
-      await app.vault.modify(file, updated);
-    }
-  };
-
   const parseCharge = (fields, slug, fallbackName) => {
     const rawAmount = fields.amount ?? fields.value ?? "0";
     const amount = Number(rawAmount.toString().replace(",", "."));
@@ -236,18 +161,18 @@ const run = async () => {
     const rawMonth = fields.month ?? fields.statement ?? "";
     const monthMoment = window.moment(rawMonth, ["YYYY-MM", "MMM YYYY", "MMMM YYYY"], true);
     if (!monthMoment?.isValid()) return null;
-    const id = fields.id || `${slug}-${monthMoment.format(MONTH_FORMAT)}-${Math.random().toString(36).slice(2, 6)}`;
+    const id = fields.id || `${slug}-${monthMoment.format("YYYY-MM")}-${Math.random().toString(36).slice(2, 6)}`;
     return {
       id,
       amount,
-      monthKey: monthMoment.format(MONTH_FORMAT),
+      monthKey: monthMoment.format("YYYY-MM"),
       category: fields.category || fallbackName,
       note: fields.note || fields.description || "",
       tag: `card-${slug}-${slugify(id)}`,
     };
   };
 
-  const loadCardsData = async (dvApi) => {
+  const loadCardsData = async (dvApi, cardsFolder) => {
     await ensureFolder(cardsFolder);
     const pages = dvApi
       .pages(`"${cardsFolder}"`)
@@ -297,8 +222,8 @@ const run = async () => {
     return { cards, chargesByMonth };
   };
 
-  const loadRecurrences = async (dvApi) => {
-    await ensureRecurrenceFile();
+  const loadRecurrences = async (dvApi, recurrencesPath) => {
+    await ensureRecurrenceFile(recurrencesPath);
     let content = "";
     try {
       content = await dvApi.io.load(recurrencesPath);
@@ -329,8 +254,8 @@ const run = async () => {
     });
   };
 
-  const saveRecurrences = async (entries) => {
-    await ensureRecurrenceFile();
+  const saveRecurrences = async (entries, recurrencesPath) => {
+    await ensureRecurrenceFile(recurrencesPath);
     const header =
       "# Recurring Expenses\n\n> [!info]\n> Managed via Finance dashboard. Edit with caution.\n\n## Recurrences\n";
     const lines = entries
@@ -351,14 +276,6 @@ const run = async () => {
     const file = app.vault.getAbstractFileByPath(recurrencesPath);
     await app.vault.modify(file, `${header}${lines ? `${lines}\n` : ""}`);
   };
-
-  const financePages = dv
-    .pages('"finance"')
-    .where((p) => {
-      const parts = p.file.folder.split("/");
-      return parts.length === 2 && parts[0] === "finance" && !isNaN(Number(parts[1]));
-    })
-    .array();
 
   const loadCategories = (() => {
     const cache = {};
@@ -383,8 +300,122 @@ const run = async () => {
     };
   })();
 
-  const cardsData = await loadCardsData(dv);
-  const recurrenceEntries = await loadRecurrences(dv);
+  const ensureAccountsFile = async () => {
+    if (app.vault.getAbstractFileByPath(ACCOUNTS_FILE)) return;
+    await app.vault.create(ACCOUNTS_FILE, "[]");
+  };
+
+  const readAccounts = async () => {
+    const file = app.vault.getAbstractFileByPath(ACCOUNTS_FILE);
+    if (!file) return [];
+    try {
+      const raw = await app.vault.read(file);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      return [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeAccounts = async (entries) => {
+    const file = app.vault.getAbstractFileByPath(ACCOUNTS_FILE);
+    if (!file) {
+      await app.vault.create(ACCOUNTS_FILE, JSON.stringify(entries, null, 2));
+      return;
+    }
+    await app.vault.modify(file, JSON.stringify(entries, null, 2));
+  };
+
+  const discoverAccountsFromFolders = () => {
+    const root = app.vault.getAbstractFileByPath(FINANCE_ROOT);
+    if (!root?.children) return [];
+    return root.children
+      .filter((entry) => entry?.children && !/^\d{4}$/.test(entry.name) && entry.name !== "cards")
+      .map((entry) => ({
+        name: entry.name,
+        slug: entry.name,
+        created: new Date().toISOString(),
+      }));
+  };
+
+  const ensureAccountStructure = async (slug) => {
+    const basePath = `${FINANCE_ROOT}/${slug}`;
+    await ensureFolder(basePath);
+    await ensureFolder(`${basePath}/cards`);
+    await ensureRecurrenceFile(`${basePath}/recurrences.md`);
+  };
+
+  await ensureFolder(FINANCE_ROOT);
+  await ensureAccountsFile();
+
+  let accounts = await readAccounts();
+  if (!accounts.length) {
+    accounts = discoverAccountsFromFolders();
+    if (accounts.length) {
+      await writeAccounts(accounts);
+    }
+  }
+  if (!accounts.length) {
+    accounts = [
+      {
+        name: "Main",
+        slug: "main",
+        created: new Date().toISOString(),
+      },
+    ];
+    await writeAccounts(accounts);
+  }
+
+  await Promise.all(accounts.map((account) => ensureAccountStructure(account.slug)));
+
+  const financeState = {
+    listeners: new Set(),
+    currentAccount: null,
+    subscribe(listener) {
+      if (typeof listener !== "function") return () => {};
+      this.listeners.add(listener);
+      listener(this.currentAccount);
+      return () => this.listeners.delete(listener);
+    },
+    notify(account) {
+      this.listeners.forEach((listener) => {
+        try {
+          listener(account);
+        } catch (error) {
+          console.warn("Finance listener error", error);
+        }
+      });
+    },
+    getAccount() {
+      return this.currentAccount;
+    },
+  };
+  window.financeState = financeState;
+
+  const updateToolkit = (account) => {
+    if (!account) {
+      window.financeUtils = null;
+      return;
+    }
+    const basePath = `${FINANCE_ROOT}/${account.slug}`;
+    const cardsFolder = `${basePath}/cards`;
+    const recurrencesPath = `${basePath}/recurrences.md`;
+    window.financeUtils = {
+      account,
+      basePath,
+      cardsFolder,
+      recurrencesPath,
+      slugify,
+      sanitizeFileName,
+      ensureFolder,
+      insertLine,
+      loadCardsData: (dvApi) => loadCardsData(dvApi, cardsFolder),
+      loadRecurrences: (dvApi) => loadRecurrences(dvApi, recurrencesPath),
+      saveRecurrences: (entries) => saveRecurrences(entries, recurrencesPath),
+      loadCategories,
+    };
+  };
 
   const ensureExpenseLine = async (path, tag, line) => {
     let content;
@@ -404,60 +435,283 @@ const run = async () => {
     return true;
   };
 
-  for (const page of financePages) {
-    const [_, year] = page.file.folder.split("/");
-    const monthName = page.file.name.replace(".md", "");
-    const monthMoment = window.moment(`${monthName} ${year}`, "MMMM YYYY", true);
-    if (!monthMoment?.isValid()) continue;
-    const monthKey = monthMoment.format(MONTH_FORMAT);
+  const applyAutomationsForAccount = async (account) => {
+    if (!account) return;
+    const basePath = `${FINANCE_ROOT}/${account.slug}`;
+    const cardsFolder = `${basePath}/cards`;
+    const recurrencesPath = `${basePath}/recurrences.md`;
 
-    const charges = cardsData.chargesByMonth.get(monthKey) ?? [];
-    const recs = recurrenceEntries.filter((entry) => shouldApplyRecurrence(entry, monthMoment));
-    if (!charges.length && !recs.length) continue;
+    const financePages = dv
+      .pages(`"${basePath}"`)
+      .where((p) => {
+        const parts = p.file.folder.split("/");
+        return (
+          parts.length === 3 &&
+          parts[0] === "finance" &&
+          parts[1] === account.slug &&
+          /^\d{4}$/.test(parts[2])
+        );
+      })
+      .array();
 
-    for (const item of charges) {
-      const amountStr = item.charge.amount.toFixed(2);
-      const noteTag = item.charge.note ? ` #${slugify(item.charge.note)}` : "";
-      const category = item.charge.category || `${item.cardName} card`;
-      const line = `- ${category}:: ${amountStr} #card-bill #${item.charge.tag}${noteTag}`;
-      await ensureExpenseLine(page.file.path, item.charge.tag, line);
+    if (!financePages.length) return;
+
+    const cardsData = await loadCardsData(dv, cardsFolder);
+    const recurrenceEntries = await loadRecurrences(dv, recurrencesPath);
+
+    for (const page of financePages) {
+      const [_, accountSlug, year] = page.file.folder.split("/");
+      if (accountSlug !== account.slug) continue;
+      const monthName = page.file.name.replace(".md", "");
+      const monthMoment = window.moment(`${monthName} ${year}`, "MMMM YYYY", true);
+      if (!monthMoment?.isValid()) continue;
+      const monthKey = monthMoment.format("YYYY-MM");
+
+      const charges = cardsData.chargesByMonth.get(monthKey) ?? [];
+      const recs = recurrenceEntries.filter((entry) => shouldApplyRecurrence(entry, monthMoment));
+      if (!charges.length && !recs.length) continue;
+
+      for (const item of charges) {
+        const amountStr = item.charge.amount.toFixed(2);
+        const noteTag = item.charge.note ? ` #${slugify(item.charge.note)}` : "";
+        const category = item.charge.category || `${item.cardName} card`;
+        const line = `- ${category}:: ${amountStr} #card-bill #${item.charge.tag}${noteTag}`;
+        await ensureExpenseLine(page.file.path, item.charge.tag, line);
+      }
+
+      for (const entry of recs) {
+        const recTag = `recurrence-${entry.id}-${monthKey}`;
+        const amountStr = Number(entry.value).toFixed(2);
+        const titleTag = entry.title ? ` #${slugify(entry.title)}` : "";
+        const line = `- ${entry.category}:: ${amountStr} #recurring #${recTag}${titleTag}`;
+        await ensureExpenseLine(page.file.path, recTag, line);
+      }
+    }
+  };
+
+  const templatePath = "templates/new finance month.md";
+  const loadTemplate = (() => {
+    let cache = null;
+    let tried = false;
+    return async () => {
+      if (tried) return cache;
+      tried = true;
+      try {
+        cache = await dv.io.load(templatePath);
+      } catch (error) {
+        console.warn("Could not load finance template.", error);
+        cache = null;
+      }
+      return cache;
+    };
+  })();
+
+  const buildContent = async (monthName, year) => {
+    const template = await loadTemplate();
+    if (!template) {
+      return `# ${monthName} ${year}\n\n## Expenses\n\n## Income\n`;
+    }
+    return template
+      .replace(/<%\s*tp\.file\.title\s*%>/g, monthName)
+      .replace(/<%\s*moment\(\)\.format\('YYYY'\)\s*%>/g, year);
+  };
+
+  const accountControls = dv.container.createEl("div");
+  accountControls.style.display = "flex";
+  accountControls.style.flexWrap = "wrap";
+  accountControls.style.gap = "0.5rem";
+  accountControls.style.alignItems = "center";
+  accountControls.style.marginBottom = "1rem";
+
+  const accountLabel = accountControls.createEl("label", { text: `${t("accountLabel")}:` });
+  accountLabel.style.fontWeight = "600";
+
+  const accountSelect = accountControls.createEl("select");
+  accountSelect.style.flex = "0 0 220px";
+  accountSelect.style.padding = "0.25rem 0.5rem";
+
+  const addAccountForm = accountControls.createEl("form");
+  addAccountForm.style.display = "flex";
+  addAccountForm.style.flex = "1";
+  addAccountForm.style.gap = "0.35rem";
+
+  const addAccountInput = addAccountForm.createEl("input", {
+    attr: { type: "text", placeholder: t("addAccountPlaceholder") },
+  });
+  addAccountInput.style.flex = "1";
+
+  const addAccountButton = addAccountForm.createEl("button", { text: t("addAccountBtn") });
+  addAccountButton.type = "submit";
+  addAccountButton.style.cursor = "pointer";
+
+  const refreshAccountOptions = () => {
+    accountSelect.innerHTML = "";
+    accounts
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach((account) => {
+        const option = accountSelect.createEl("option", {
+          text: account.name,
+          value: account.slug,
+        });
+        if (financeState.currentAccount?.slug === account.slug) {
+          option.selected = true;
+        }
+      });
+    accountSelect.disabled = accounts.length === 0;
+  };
+
+  const persistAccounts = async (next) => {
+    accounts = next;
+    await writeAccounts(accounts);
+    await Promise.all(next.map((account) => ensureAccountStructure(account.slug)));
+    refreshAccountOptions();
+  };
+
+  addAccountForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const name = addAccountInput.value.trim();
+    if (!name) {
+      new Notice(t("invalidAccount"));
+      return;
+    }
+    const slug = slugify(name);
+    if (!slug) {
+      new Notice(t("invalidAccount"));
+      return;
+    }
+    if (accounts.some((account) => account.slug === slug)) {
+      new Notice(t("accountExists"));
+      return;
+    }
+    const nextAccount = { name, slug, created: new Date().toISOString() };
+    await persistAccounts([...accounts, nextAccount]);
+    new Notice(t("accountCreated"));
+    addAccountInput.value = "";
+    selectAccountBySlug(slug);
+  };
+
+  const monthContainer = dv.container.createEl("div");
+
+  const renderMonthForm = (account) => {
+    monthContainer.innerHTML = "";
+    if (!account) {
+      monthContainer.createEl("p", { text: t("missingAccount") });
+      return;
     }
 
-    for (const entry of recs) {
-      const recTag = `recurrence-${entry.id}-${monthKey}`;
-      const amountStr = Number(entry.value).toFixed(2);
-      const titleTag = entry.title ? ` #${slugify(entry.title)}` : "";
-      const line = `- ${entry.category}:: ${amountStr} #recurring #${recTag}${titleTag}`;
-      await ensureExpenseLine(page.file.path, recTag, line);
+    const wrapper = monthContainer.createEl("div", { cls: "finance-month-creator" });
+    wrapper.style.border = "1px solid var(--background-modifier-border)";
+    wrapper.style.borderRadius = "10px";
+    wrapper.style.padding = "1rem";
+    wrapper.style.marginBottom = "1rem";
+    wrapper.style.display = "flex";
+    wrapper.style.flexDirection = "column";
+    wrapper.style.gap = "0.5rem";
+
+    wrapper.createEl("strong", { text: t("newMonthHeading", { account: account.name }) });
+
+    const form = wrapper.createEl("form");
+    form.style.display = "flex";
+    form.style.flexWrap = "wrap";
+    form.style.gap = "0.5rem";
+
+    const today = window.moment();
+    const currentYear = today.year();
+    const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+    const months = window.moment.months();
+
+    const yearSelect = form.createEl("select");
+    yearSelect.style.flex = "0 0 140px";
+    years.forEach((year) => {
+      yearSelect.createEl("option", { text: year, value: year });
+    });
+    yearSelect.value = currentYear;
+
+    const monthSelect = form.createEl("select");
+    monthSelect.style.flex = "1 1 200px";
+    months.forEach((month) => {
+      monthSelect.createEl("option", { text: month, value: month });
+    });
+    monthSelect.value = today.format("MMMM");
+
+    const submitBtn = form.createEl("button", { text: "Create month" });
+    submitBtn.type = "submit";
+    submitBtn.style.cursor = "pointer";
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const year = Number(yearSelect.value);
+      const monthName = monthSelect.value;
+      const folderPath = `${FINANCE_ROOT}/${account.slug}/${year}`;
+      const targetPath = `${folderPath}/${monthName}.md`;
+      submitBtn.disabled = true;
+      const prevText = submitBtn.textContent;
+      submitBtn.textContent = "Creating...";
+      try {
+        await ensureFolder(`${FINANCE_ROOT}/${account.slug}`);
+        await ensureFolder(folderPath);
+        if (app.vault.getAbstractFileByPath(targetPath)) {
+          new Notice(`Month already exists: ${targetPath}`);
+          app.workspace.openLinkText(targetPath, "", false);
+        } else {
+          const content = await buildContent(monthName, year);
+          await app.vault.create(targetPath, content);
+          new Notice(`Created ${targetPath}`);
+          app.workspace.openLinkText(targetPath, "", false);
+        }
+      } catch (error) {
+        console.error(error);
+        new Notice("Could not create the month.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = prevText;
+      }
+    };
+  };
+
+  financeState.subscribe(renderMonthForm);
+
+  const selectAccountBySlug = (slug) => {
+    const next = accounts.find((account) => account.slug === slug) ?? null;
+    if (financeState.currentAccount?.slug === next?.slug) return;
+    financeState.currentAccount = next;
+    if (next) {
+      localStorage.setItem(STORAGE_KEY, next.slug);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
     }
+    updateToolkit(next);
+    financeState.notify(next);
+    applyAutomationsForAccount(next).catch((error) => console.error(error));
+  };
+
+  financeState.setAccount = selectAccountBySlug;
+
+  refreshAccountOptions();
+  const stored = localStorage.getItem(STORAGE_KEY);
+  const initialSlug = accounts.find((account) => account.slug === stored)?.slug || accounts[0]?.slug;
+  if (initialSlug) {
+    accountSelect.value = initialSlug;
+    selectAccountBySlug(initialSlug);
+  } else {
+    financeState.notify(null);
   }
 
-  window.financeUtils = {
-    cardsFolder,
-    recurrencesPath,
-    slugify,
-    sanitizeFileName,
-    ensureFolder,
-    insertLine,
-    loadCardsData: (dvApi) => loadCardsData(dvApi),
-    loadRecurrences: (dvApi) => loadRecurrences(dvApi),
-    saveRecurrences,
-    loadCategories,
-  };
+  accountSelect.onchange = () => selectAccountBySlug(accountSelect.value);
 };
 
 run();
 ```
 
+
+
+
 ## Credit cards
 
 ```dataviewjs
 const run = async () => {
-  const toolkit = window.financeUtils;
-  if (!toolkit) {
-    dv.paragraph("Reload this dashboard to initialize credit card tools.");
-    return;
-  }
+  const state = window.financeState;
 
   const settingsPage = dv.page("config/settings") ?? {};
   const language = (settingsPage.language || "en").toLowerCase();
@@ -489,6 +743,8 @@ const run = async () => {
       invalidCharge: "Provide a month and a non-zero amount.",
       cardSaved: "Card saved.",
       chargeSaved: "Charge saved.",
+      noAccount: "Select or create an account to manage cards.",
+      reloadPrompt: "Reload this dashboard to initialize credit card tools.",
     },
     pt: {
       sectionTitle: "Cartões de crédito",
@@ -515,6 +771,8 @@ const run = async () => {
       invalidCharge: "Informe o mês e um valor diferente de zero.",
       cardSaved: "Cartão salvo.",
       chargeSaved: "Gasto registrado.",
+      noAccount: "Selecione ou crie uma conta para gerenciar os cartões.",
+      reloadPrompt: "Recarregue o painel para inicializar os cartões.",
     },
   };
 
@@ -546,6 +804,16 @@ const run = async () => {
 
   const render = async () => {
     root.innerHTML = "";
+    const account = state?.getAccount ? state.getAccount() : state?.currentAccount ?? null;
+    const toolkit = window.financeUtils;
+    if (!account) {
+      root.createEl("p", { text: t("noAccount") });
+      return;
+    }
+    if (!toolkit) {
+      root.createEl("p", { text: t("reloadPrompt") });
+      return;
+    }
     const data = await toolkit.loadCardsData(dv);
     const cards = data.cards.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -653,7 +921,7 @@ dueDay: ${dueDay}
       if (!monthMoment?.isValid()) return;
       const year = monthMoment.format("YYYY");
       const monthName = monthMoment.format("MMMM");
-      const monthPath = `finance/${year}/${monthName}.md`;
+      const monthPath = `${toolkit.basePath}/${year}/${monthName}.md`;
       const file = app.vault.getAbstractFileByPath(monthPath);
       if (!file) return;
       let content;
@@ -887,7 +1155,13 @@ dueDay: ${dueDay}
     });
   };
 
-  await render();
+  if (state?.subscribe) {
+    state.subscribe(() => {
+      render();
+    });
+  } else {
+    await render();
+  }
 };
 
 run();
@@ -897,11 +1171,7 @@ run();
 
 ```dataviewjs
 const run = async () => {
-  const toolkit = window.financeUtils;
-  if (!toolkit) {
-    dv.paragraph("Reload this dashboard to initialize recurring expenses.");
-    return;
-  }
+  const state = window.financeState;
 
   const settingsPage = dv.page("config/settings") ?? {};
   const language = (settingsPage.language || "en").toLowerCase();
@@ -926,6 +1196,8 @@ const run = async () => {
       invalid: "Provide a title and value.",
       saved: "Recurrence saved.",
       updated: "Recurrence updated.",
+      noAccount: "Select or create an account to manage recurrences.",
+      reloadPrompt: "Reload this dashboard to initialize recurring expenses.",
     },
     pt: {
       sectionTitle: "Despesas recorrentes",
@@ -945,6 +1217,8 @@ const run = async () => {
       invalid: "Informe um título e um valor válido.",
       saved: "Recorrência salva.",
       updated: "Recorrência atualizada.",
+      noAccount: "Selecione ou crie uma conta para gerenciar as recorrências.",
+      reloadPrompt: "Recarregue o painel para inicializar as recorrências.",
     },
   };
 
@@ -985,6 +1259,16 @@ const run = async () => {
 
   const render = async () => {
     root.innerHTML = "";
+    const account = state?.getAccount ? state.getAccount() : state?.currentAccount ?? null;
+    const toolkit = window.financeUtils;
+    if (!account) {
+      root.createEl("p", { text: t("noAccount") });
+      return;
+    }
+    if (!toolkit) {
+      root.createEl("p", { text: t("reloadPrompt") });
+      return;
+    }
     const entries = await toolkit.loadRecurrences(dv);
 
     const title = root.createEl("h2", { text: t("sectionTitle") });
@@ -1122,7 +1406,13 @@ const run = async () => {
       });
   };
 
-  await render();
+  if (state?.subscribe) {
+    state.subscribe(() => {
+      render();
+    });
+  } else {
+    await render();
+  }
 };
 
 run();
@@ -1132,10 +1422,9 @@ run();
 ## Summary
 ```dataviewjs
 const run = async () => {
-  const pages = dv.pages('"finance"').where(p => {
-    const parts = p.file.folder.split('/');
-    return parts.length === 2 && parts[0] === 'finance' && !isNaN(parts[1]);
-  });
+  const FINANCE_ROOT = "finance";
+  const state = window.financeState;
+  const host = dv.container.createEl("div");
 
   const settingsPage = dv.page("config/settings") ?? {};
   const language = (settingsPage.language || "en").toLowerCase();
@@ -1143,7 +1432,7 @@ const run = async () => {
 
   const translations = {
     en: {
-      missingMonth: "❌ Create `finance/2025/November.md` with `- cat:: value`",
+      missingMonth: ({ path }) => `❌ Create \`${path}\` with \`- cat:: value\``,
       yearLabel: "Year:",
       openCurrentMonth: ({ month }) => `Open ${month}`,
       noDataYear: "No financial data for this year.",
@@ -1166,9 +1455,10 @@ const run = async () => {
       entryAdded: "Entry added! Reload to see the update.",
       couldNotSave: ({ reason }) => `Could not save entry (${reason}).`,
       openMonth: "Open month",
+      noAccount: "Select or create an account to view finances.",
     },
     pt: {
-      missingMonth: "❌ Crie `finance/2025/November.md` com linhas `- cat:: valor`",
+      missingMonth: ({ path }) => `❌ Crie \`${path}\` com linhas \`- cat:: valor\``,
       yearLabel: "Ano:",
       openCurrentMonth: ({ month }) => `Abrir ${month}`,
       noDataYear: "Nenhum dado financeiro para este ano.",
@@ -1191,6 +1481,7 @@ const run = async () => {
       entryAdded: "Lançamento adicionado! Recarregue para ver a atualização.",
       couldNotSave: ({ reason }) => `Não foi possível salvar (${reason}).`,
       openMonth: "Abrir mês",
+      noAccount: "Selecione ou crie uma conta para ver as finanças.",
     },
   };
 
@@ -1198,11 +1489,6 @@ const run = async () => {
     const value = translations[language]?.[key] ?? translations.en[key] ?? key;
     return typeof value === "function" ? value(data) : value;
   };
-
-  if (pages.length === 0) {
-    dv.paragraph(t("missingMonth"));
-    return;
-  }
 
   const currencySymbols = {
     BRL: { prefix: "R$", format: (value) => Number(value || 0).toFixed(2).replace('.', ',') },
@@ -1235,7 +1521,7 @@ const run = async () => {
             .split('\n')
             .map(line => line.trim())
             .filter(line => line.startsWith('-'))
-            .map(line => line.replace(/^-\s*/, '').trim())
+            .map(line => line.replace(/^-\\s*/, '').trim())
             .filter(Boolean);
           return (cache[type] = items);
         } catch {
@@ -1289,34 +1575,6 @@ const run = async () => {
     }
   };
 
-  const years = [...new Set(pages.map(p => p.file.folder.split('/')[1]))].map(Number).sort((a, b) => b - a);
-  const controls = dv.container.createEl('div');
-  controls.style.display = 'flex';
-  controls.style.gap = '0.75rem';
-  controls.style.flexWrap = 'wrap';
-  controls.style.alignItems = 'center';
-  controls.style.margin = '0.5rem 0 1rem';
-
-  const yearLabel = controls.createEl('label', { text: t('yearLabel') });
-  yearLabel.style.fontWeight = '600';
-
-  const yearSelect = controls.createEl('select');
-  yearSelect.style.padding = '0.25rem 0.5rem';
-  years.forEach(y => yearSelect.createEl('option', { text: y, value: y }));
-  yearSelect.value = years[0];
-
-  const today = window.moment();
-  const currentYear = today.format('YYYY');
-  const currentMonthName = today.format('MMMM');
-  const currentPath = `finance/${currentYear}/${currentMonthName}.md`;
-
-  const openMonthBtn = controls.createEl('button', { text: t('openCurrentMonth', { month: currentMonthName }) });
-  openMonthBtn.className = 'mod-cta';
-  openMonthBtn.style.cursor = 'pointer';
-  openMonthBtn.onclick = () => app.workspace.openLinkText(currentPath, '', false);
-
-  const dataContainer = dv.container.createEl('div');
-
   const loadChartJs = (() => {
     let promise;
     return () => {
@@ -1334,228 +1592,293 @@ const run = async () => {
     };
   })();
 
-  const renderYear = async (year) => {
-    dataContainer.innerHTML = '';
-    const yearPages = pages.where(p => p.file.folder === `finance/${year}`);
-
-    const monthEntries = [];
-    for (const p of yearPages) {
-      const month = p.file.name.replace('.md', '');
-      const content = await dv.io.load(p.file.path);
-      const expenses = parseSection(content, 'Expenses');
-      const income = parseSection(content, 'Income');
-      monthEntries.push({
-        month,
-        file: p.file,
-        expenses,
-        income
-      });
+  const render = async () => {
+    host.innerHTML = '';
+    const account = state?.getAccount ? state.getAccount() : state?.currentAccount ?? null;
+    if (!account) {
+      host.createEl('p', { text: t('noAccount') });
+      return;
     }
+    const basePath = `${FINANCE_ROOT}/${account.slug}`;
+    const pages = dv
+      .pages(`"${basePath}"`)
+      .where(p => {
+        const parts = p.file.folder.split('/');
+        return parts.length === 3 && parts[0] === 'finance' && parts[1] === account.slug && !isNaN(Number(parts[2]));
+      })
+      .array();
 
-    if (monthEntries.length === 0) {
-      dataContainer.createEl('p', { text: t('noDataYear') });
+    if (pages.length === 0) {
+      const today = window.moment();
+      const fallbackPath = `${basePath}/${today.format('YYYY')}/${today.format('MMMM')}.md`;
+      host.createEl('p', { text: t('missingMonth', { path: fallbackPath }) });
       return;
     }
 
-    monthEntries.sort((a, b) => new Date(`${b.month} 1, ${year}`) - new Date(`${a.month} 1, ${year}`));
-    const months = monthEntries.map(m => m.month);
+    const years = [...new Set(pages.map(p => p.file.folder.split('/')[2]))]
+      .map(Number)
+      .filter(year => !isNaN(year))
+      .sort((a, b) => b - a);
 
-    const summaryTable = dataContainer.createEl('div');
-    summaryTable.createEl('h3', { text: t('summaryTitle', { year }) });
-    const rows = monthEntries.map(entry => [
-      entry.month,
-      formatCurrency(entry.expenses.total),
-      formatCurrency(entry.income.total),
-      formatCurrency(entry.income.total - entry.expenses.total)
-    ]);
-    dv.table([t('monthHeader'), t('expensesLabel'), t('incomeLabel'), t('balanceLabel')], rows, summaryTable);
+    const controls = host.createEl('div');
+    controls.style.display = 'flex';
+    controls.style.gap = '0.75rem';
+    controls.style.flexWrap = 'wrap';
+    controls.style.alignItems = 'center';
+    controls.style.margin = '0.5rem 0 1rem';
 
-    const chartWrapper = dataContainer.createEl('div');
-    chartWrapper.createEl('h3', { text: t('trendTitle', { year }) });
-    const chartDiv = chartWrapper.createEl('div', { attr: { style: 'height:400px; margin:20px 0;' } });
-    loadChartJs().then(() => {
-      const canvas = document.createElement('canvas');
-      chartDiv.appendChild(canvas);
-      new Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: months,
-          datasets: [
-            {
-              label: t('expensesLabel'),
-              data: monthEntries.map(m => m.expenses.total),
-              borderColor: '#FF6384',
-              backgroundColor: '#FF638433',
-              tension: 0.3
-            },
-            {
-              label: t('incomeLabel'),
-              data: monthEntries.map(m => m.income.total),
-              borderColor: '#36A2EB',
-              backgroundColor: '#36A2EB33',
-              tension: 0.3
-            },
-            {
-              label: t('balanceLabel'),
-              data: monthEntries.map(m => m.income.total - m.expenses.total),
-              borderColor: '#4BC0C0',
-              backgroundColor: '#4BC0C033',
-              tension: 0.3
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            title: { display: true, text: t('financesTitle', { year }) },
-            legend: { position: 'bottom' }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { callback: (value) => `${currencyConfig.prefix} ${value}` }
-            }
-          }
-        }
-      });
-    });
+    const yearLabel = controls.createEl('label', { text: t('yearLabel') });
+    yearLabel.style.fontWeight = '600';
 
-    const monthsGrid = dataContainer.createEl('div');
-    monthsGrid.style.display = 'flex';
-    monthsGrid.style.flexDirection = 'column';
-    monthsGrid.style.gap = '1rem';
-    monthsGrid.style.marginTop = '1rem';
+    const yearSelect = controls.createEl('select');
+    yearSelect.style.padding = '0.25rem 0.5rem';
+    years.forEach(y => yearSelect.createEl('option', { text: y, value: y }));
+    yearSelect.value = years[0];
 
-    const renderList = (items, parent) => {
-      if (items.length === 0) {
-        parent.createEl('p', { text: t('noEntries') }).style.color = 'var(--text-muted)';
+    const today = window.moment();
+    const currentYear = today.format('YYYY');
+    const currentMonthName = today.format('MMMM');
+    const currentPath = `${basePath}/${currentYear}/${currentMonthName}.md`;
+
+    const openMonthBtn = controls.createEl('button', { text: t('openCurrentMonth', { month: currentMonthName }) });
+    openMonthBtn.className = 'mod-cta';
+    openMonthBtn.style.cursor = 'pointer';
+    openMonthBtn.onclick = () => app.workspace.openLinkText(currentPath, '', false);
+
+    const dataContainer = host.createEl('div');
+
+    const renderYear = async (year) => {
+      dataContainer.innerHTML = '';
+      const yearPages = pages.filter(p => p.file.folder === `${basePath}/${year}`);
+
+      const monthEntries = [];
+      for (const p of yearPages) {
+        const month = p.file.name.replace('.md', '');
+        const content = await dv.io.load(p.file.path);
+        const expenses = parseSection(content, 'Expenses');
+        const income = parseSection(content, 'Income');
+        monthEntries.push({
+          month,
+          file: p.file,
+          expenses,
+          income,
+        });
+      }
+
+      if (monthEntries.length === 0) {
+        dataContainer.createEl('p', { text: t('noDataYear') });
         return;
       }
-      const list = parent.createEl('ul');
-      list.style.margin = '0';
-      list.style.paddingLeft = '1.1rem';
-      items.forEach(item => {
-        const li = list.createEl('li');
-        const note = item.note ? ` • #${item.note}` : '';
-        li.textContent = `${item.category}: ${formatCurrency(item.value)}${note}`;
-      });
-    };
 
-    const createEntryForm = (parent, heading, filePath) => {
-      const form = parent.createEl('form');
-      form.style.display = 'flex';
-      form.style.flexDirection = 'column';
-      form.style.gap = '0.35rem';
-      form.style.marginTop = '0.5rem';
+      monthEntries.sort((a, b) => new Date(`${b.month} 1, ${year}`) - new Date(`${a.month} 1, ${year}`));
+      const months = monthEntries.map(m => m.month);
 
-      const nameLabel = form.createEl('label', { text: t('categoryLabel') });
-      nameLabel.style.fontWeight = '600';
-      const nameInput = form.createEl('select');
-      nameInput.required = true;
-      const placeholder = nameInput.createEl('option', { text: t('selectCategory'), value: '' });
-      placeholder.disabled = true;
-      placeholder.selected = true;
+      const summaryTable = dataContainer.createEl('div');
+      summaryTable.createEl('h3', { text: t('summaryTitle', { year }) });
+      const rows = monthEntries.map(entry => [
+        entry.month,
+        formatCurrency(entry.expenses.total),
+        formatCurrency(entry.income.total),
+        formatCurrency(entry.income.total - entry.expenses.total)
+      ]);
+      dv.table([t('monthHeader'), t('expensesLabel'), t('incomeLabel'), t('balanceLabel')], rows, summaryTable);
 
-      loadCategories(heading === 'Income' ? 'incomeCategories' : 'expenseCategories').then(list => {
-        const targetList = Array.isArray(list) && list.length ? list : ['general'];
-        if (targetList.length) {
-          placeholder.selected = false;
-        }
-        targetList.forEach(cat => {
-          nameInput.createEl('option', { text: cat, value: cat });
+      const chartWrapper = dataContainer.createEl('div');
+      chartWrapper.createEl('h3', { text: t('trendTitle', { year }) });
+      const chartDiv = chartWrapper.createEl('div', { attr: { style: 'height:400px; margin:20px 0;' } });
+      loadChartJs().then(() => {
+        const canvas = document.createElement('canvas');
+        chartDiv.appendChild(canvas);
+        new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: months,
+            datasets: [
+              {
+                label: t('expensesLabel'),
+                data: monthEntries.map(m => m.expenses.total),
+                borderColor: '#FF6384',
+                backgroundColor: '#FF638433',
+                tension: 0.3
+              },
+              {
+                label: t('incomeLabel'),
+                data: monthEntries.map(m => m.income.total),
+                borderColor: '#36A2EB',
+                backgroundColor: '#36A2EB33',
+                tension: 0.3
+              },
+              {
+                label: t('balanceLabel'),
+                data: monthEntries.map(m => m.income.total - m.expenses.total),
+                borderColor: '#4BC0C0',
+                backgroundColor: '#4BC0C033',
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              title: { display: true, text: t('financesTitle', { year }) },
+              legend: { position: 'bottom' }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { callback: (value) => `${currencyConfig.prefix} ${value}` }
+              }
+            }
+          }
         });
       });
-      const valueInput = form.createEl('input', { attr: { type: 'number', step: '0.01', placeholder: t('amountPlaceholder'), required: 'true' } });
-      const noteInput = form.createEl('input', { attr: { type: 'text', placeholder: t('tagPlaceholder') } });
-      const submitBtn = form.createEl('button', { text: heading === 'Income' ? t('addIncome') : t('addExpenses') });
-      submitBtn.type = 'submit';
-      submitBtn.style.cursor = 'pointer';
 
-      form.onsubmit = async (event) => {
-        event.preventDefault();
-        const category = nameInput.value.trim();
-        const value = parseFloat((valueInput.value || '').replace(',', '.'));
-        if (!category || isNaN(value) || value === 0) {
-          new Notice(t('invalidEntry'));
+      const monthsGrid = dataContainer.createEl('div');
+      monthsGrid.style.display = 'flex';
+      monthsGrid.style.flexDirection = 'column';
+      monthsGrid.style.gap = '1rem';
+      monthsGrid.style.marginTop = '1rem';
+
+      const renderList = (items, parent) => {
+        if (items.length === 0) {
+          parent.createEl('p', { text: t('noEntries') }).style.color = 'var(--text-muted)';
           return;
         }
-        submitBtn.disabled = true;
-        submitBtn.textContent = t('saving');
-
-        const tag = noteInput.value.trim();
-        const safeTag = tag ? makeTagSlug(tag) : '';
-        const amountStr = Number(value).toFixed(2);
-        const line = `- ${category}:: ${amountStr}${safeTag ? ` #${safeTag}` : ''}`;
-
-        try {
-          await insertLine(filePath, heading, line);
-          new Notice(t('entryAdded'));
-          nameInput.value = '';
-          valueInput.value = '';
-          noteInput.value = '';
-        } catch (error) {
-          console.error(error);
-          const reason = error?.message || 'unknown error';
-          new Notice(t('couldNotSave', { reason }));
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = heading === 'Income' ? t('addIncome') : t('addExpenses');
-        }
+        const list = parent.createEl('ul');
+        list.style.margin = '0';
+        list.style.paddingLeft = '1.1rem';
+        items.forEach(item => {
+          const li = list.createEl('li');
+          const note = item.note ? ` • #${item.note}` : '';
+          li.textContent = `${item.category}: ${formatCurrency(item.value)}${note}`;
+        });
       };
+
+      const createEntryForm = (parent, heading, filePath) => {
+        const form = parent.createEl('form');
+        form.style.display = 'flex';
+        form.style.flexDirection = 'column';
+        form.style.gap = '0.35rem';
+        form.style.marginTop = '0.5rem';
+
+        const nameLabel = form.createEl('label', { text: t('categoryLabel') });
+        nameLabel.style.fontWeight = '600';
+        const nameInput = form.createEl('select');
+        nameInput.required = true;
+        const placeholder = nameInput.createEl('option', { text: t('selectCategory'), value: '' });
+        placeholder.disabled = true;
+        placeholder.selected = true;
+
+        loadCategories(heading === 'Income' ? 'incomeCategories' : 'expenseCategories').then(list => {
+          const targetList = Array.isArray(list) && list.length ? list : ['general'];
+          if (targetList.length) {
+            placeholder.selected = false;
+          }
+          targetList.forEach(cat => {
+            nameInput.createEl('option', { text: cat, value: cat });
+          });
+        });
+        const valueInput = form.createEl('input', { attr: { type: 'number', step: '0.01', placeholder: t('amountPlaceholder'), required: 'true' } });
+        const noteInput = form.createEl('input', { attr: { type: 'text', placeholder: t('tagPlaceholder') } });
+        const submitBtn = form.createEl('button', { text: heading === 'Income' ? t('addIncome') : t('addExpenses') });
+        submitBtn.type = 'submit';
+        submitBtn.style.cursor = 'pointer';
+
+        form.onsubmit = async (event) => {
+          event.preventDefault();
+          const category = nameInput.value.trim();
+          const value = parseFloat((valueInput.value || '').replace(',', '.'));
+          if (!category || isNaN(value) || value === 0) {
+            new Notice(t('invalidEntry'));
+            return;
+          }
+          submitBtn.disabled = true;
+          submitBtn.textContent = t('saving');
+
+          const tag = noteInput.value.trim();
+          const safeTag = tag ? makeTagSlug(tag) : '';
+          const amountStr = Number(value).toFixed(2);
+          const line = `- ${category}:: ${amountStr}${safeTag ? ` #${safeTag}` : ''}`;
+
+          try {
+            await insertLine(filePath, heading, line);
+            new Notice(t('entryAdded'));
+            nameInput.value = '';
+            valueInput.value = '';
+            noteInput.value = '';
+          } catch (error) {
+            console.error(error);
+            const reason = error?.message || 'unknown error';
+            new Notice(t('couldNotSave', { reason }));
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = heading === 'Income' ? t('addIncome') : t('addExpenses');
+          }
+        };
+      };
+
+      monthEntries.forEach(entry => {
+        const card = monthsGrid.createEl('div');
+        card.style.border = '1px solid var(--background-modifier-border)';
+        card.style.borderRadius = '10px';
+        card.style.padding = '1rem';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = '0.75rem';
+
+        const cardHeader = card.createEl('div');
+        cardHeader.style.display = 'flex';
+        cardHeader.style.justifyContent = 'space-between';
+        cardHeader.style.alignItems = 'center';
+
+        const title = cardHeader.createEl('h3', { text: entry.month });
+        title.style.margin = '0';
+
+        const openButton = cardHeader.createEl('button', { text: t('openMonth') });
+        openButton.style.cursor = 'pointer';
+        openButton.onclick = () => app.workspace.openLinkText(entry.file.path, '', false);
+
+        const columns = card.createEl('div');
+        columns.style.display = 'grid';
+        columns.style.gridTemplateColumns = 'repeat(auto-fit, minmax(240px, 1fr))';
+        columns.style.gap = '1rem';
+
+        const buildColumn = (heading, data) => {
+          const col = columns.createEl('div');
+          const colHeader = col.createEl('div');
+          colHeader.style.display = 'flex';
+          colHeader.style.justifyContent = 'space-between';
+          colHeader.style.alignItems = 'baseline';
+
+          const headingLabel = heading === 'Income' ? t('incomeLabel') : t('expensesLabel');
+          const colTitle = colHeader.createEl('h4', { text: headingLabel });
+          colTitle.style.margin = '0';
+          colHeader.createEl('span', { text: formatCurrency(data.total) });
+
+          renderList(data.items, col);
+          createEntryForm(col, heading, entry.file.path);
+        };
+
+        buildColumn('Income', entry.income);
+        buildColumn('Expenses', entry.expenses);
+      });
     };
 
-    monthEntries.forEach(entry => {
-      const card = monthsGrid.createEl('div');
-      card.style.border = '1px solid var(--background-modifier-border)';
-      card.style.borderRadius = '10px';
-      card.style.padding = '1rem';
-      card.style.display = 'flex';
-      card.style.flexDirection = 'column';
-      card.style.gap = '0.75rem';
-
-      const cardHeader = card.createEl('div');
-      cardHeader.style.display = 'flex';
-      cardHeader.style.justifyContent = 'space-between';
-      cardHeader.style.alignItems = 'center';
-
-      const title = cardHeader.createEl('h3', { text: entry.month });
-      title.style.margin = '0';
-
-      const openButton = cardHeader.createEl('button', { text: t('openMonth') });
-      openButton.style.cursor = 'pointer';
-      openButton.onclick = () => app.workspace.openLinkText(entry.file.path, '', false);
-
-      const columns = card.createEl('div');
-      columns.style.display = 'grid';
-      columns.style.gridTemplateColumns = 'repeat(auto-fit, minmax(240px, 1fr))';
-      columns.style.gap = '1rem';
-
-      const buildColumn = (heading, data) => {
-        const col = columns.createEl('div');
-        const colHeader = col.createEl('div');
-        colHeader.style.display = 'flex';
-        colHeader.style.justifyContent = 'space-between';
-        colHeader.style.alignItems = 'baseline';
-
-        const headingLabel = heading === 'Income' ? t('incomeLabel') : t('expensesLabel');
-        const colTitle = colHeader.createEl('h4', { text: headingLabel });
-        colTitle.style.margin = '0';
-        colHeader.createEl('span', { text: formatCurrency(data.total) });
-
-        renderList(data.items, col);
-        createEntryForm(col, heading, entry.file.path);
-      };
-
-      buildColumn('Income', entry.income);
-      buildColumn('Expenses', entry.expenses);
-    });
+    await renderYear(years[0]);
+    yearSelect.onchange = () => renderYear(Number(yearSelect.value));
   };
 
-  renderYear(years[0]);
-  yearSelect.onchange = () => renderYear(yearSelect.value);
+  if (state?.subscribe) {
+    state.subscribe(() => {
+      render();
+    });
+  } else {
+    await render();
+  }
 };
 
 run();
 ```
+
