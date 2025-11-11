@@ -6,4 +6,5 @@ profile/*
 training/exercises/*
 books/*
 config/settings.md
+.obsidian/workspace.json
 !**/.gitkeep
