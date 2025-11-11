@@ -78,6 +78,29 @@ const run = async () => {
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
 
+  const loadCategories = (() => {
+    const cache = {};
+    return async (type) => {
+      if (cache[type]) return cache[type];
+      try {
+        const file = app.vault.getAbstractFileByPath('config/consts.md');
+        if (!file) return (cache[type] = []);
+        const content = await app.vault.read(file);
+        const match = content.match(new RegExp(`##\\s*${type}[\\s\\S]*?(?=\\n##|$)`, 'i'));
+        if (!match) return (cache[type] = []);
+        const items = match[0]
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.startsWith('-'))
+          .map(line => line.replace(/^-\s*/, '').trim())
+          .filter(Boolean);
+        return (cache[type] = items);
+      } catch {
+        return (cache[type] = []);
+      }
+    };
+  })();
+
   const parseSection = (content, heading) => {
     const after = content.split(new RegExp(`##\\s*${heading}`, 'i'))[1];
     if (!after) return { total: 0, items: [] };
@@ -284,7 +307,23 @@ const run = async () => {
       form.style.gap = '0.35rem';
       form.style.marginTop = '0.5rem';
 
-      const nameInput = form.createEl('input', { attr: { type: 'text', placeholder: 'Category', required: 'true' } });
+      const nameLabel = form.createEl('label', { text: 'Category' });
+      nameLabel.style.fontWeight = '600';
+      const nameInput = form.createEl('select');
+      nameInput.required = true;
+      const placeholder = nameInput.createEl('option', { text: 'Select category', value: '' });
+      placeholder.disabled = true;
+      placeholder.selected = true;
+
+      loadCategories(heading === 'Income' ? 'incomeCategories' : 'expenseCategories').then(list => {
+        const targetList = Array.isArray(list) && list.length ? list : ['general'];
+        if (targetList.length) {
+          placeholder.selected = false;
+        }
+        targetList.forEach(cat => {
+          nameInput.createEl('option', { text: cat, value: cat });
+        });
+      });
       const valueInput = form.createEl('input', { attr: { type: 'number', step: '0.01', placeholder: 'Amount', required: 'true' } });
       const noteInput = form.createEl('input', { attr: { type: 'text', placeholder: 'Optional tag (e.g., rent)' } });
       const submitBtn = form.createEl('button', { text: `Add ${heading.toLowerCase()}` });
@@ -296,7 +335,7 @@ const run = async () => {
         const category = nameInput.value.trim();
         const value = parseFloat((valueInput.value || '').replace(',', '.'));
         if (!category || isNaN(value) || value === 0) {
-          new Notice('Provide a category and a non-zero amount.');
+          new Notice('Select a category and enter a non-zero amount.');
           return;
         }
         submitBtn.disabled = true;
