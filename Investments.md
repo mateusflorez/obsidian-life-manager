@@ -127,24 +127,6 @@ const run = async () => {
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-  const currencySymbols = {
-    BRL: {
-      prefix: "R$",
-      format: (value) => Number(value).toFixed(2).replace(".", ","),
-    },
-    USD: {
-      prefix: "$",
-      format: (value) => Number(value).toFixed(2),
-    },
-  };
-  const currencyConfig = currencySymbols[currency] || currencySymbols.BRL;
-  const formatCurrency = (value) => `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
-  const formatLedgerAmount = (value) => {
-    if (!isFinite(value)) return "0";
-    const fixed = Number(value).toFixed(2);
-    return fixed.replace(/\.00$/, "");
-  };
-
   const extractSectionLines = (content) => {
     const sectionRegex = /##\s*Movements[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i;
     const match = sectionRegex.exec(content);

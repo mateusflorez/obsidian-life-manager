@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Landing.md",
+                "file": "Investments.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Landing"
+              "title": "Investments"
             }
           }
         ]
@@ -173,16 +173,18 @@
   },
   "active": "3347ec63467bca09",
   "lastOpenFiles": [
-    "Config.md",
-    "Landing.md",
-    "README.md",
-    "Investments.md",
-    "Finance.md",
-    "finance/2025/November.md",
-    "Todo.md",
-    "Training.md",
-    "config/settings.md",
+    "AGENTS.md",
     "training/exercises/Squats.md",
+    "CLAUDE.md",
+    "Training.md",
+    "Investments.md",
+    "Landing.md",
+    "Todo.md",
+    "Finance.md",
+    "Config.md",
+    "README.md",
+    "finance/2025/November.md",
+    "config/settings.md",
     "training/training.md",
     "templates/new training exercise.md",
     "templates/new",
@@ -190,9 +192,7 @@
     "training",
     "2025-11-11.md",
     "profile/stats.md",
-    "AGENTS.md",
     "config/consts.md",
-    "CLAUDE.md",
     "config",
     "finance/2025/month.md",
     "templates/new finance month.md",
