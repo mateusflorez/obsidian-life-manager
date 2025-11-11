@@ -79,3 +79,6 @@ Open `Landing.md`, set your name/avatar, and start with the main buttons:
 3. Log investments in `investments/` and monitor them inside **Investments**.
 
 That’s it! Your financial and productivity routine stays in sync every time you open Obsidian. Happy tracking! 🧠📈
+
+## 🛠️ Updating the vault
+- use git source control of git plugin to pull the latest changes
