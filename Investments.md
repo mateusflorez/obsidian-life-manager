@@ -3,6 +3,26 @@
 > [!info]
 > Gerencie seus investimentos e acompanhe a evolução dos aportes mensais.
 
+```meta-bind-button
+label: Novo investimento
+icon: plus
+style: primary
+class: ""
+cssStyle: ""
+backgroundImage: ""
+tooltip: ""
+id: ""
+hidden: false
+actions:
+  - type: templaterCreateNote
+    templateFile: templates/new investment.md
+    folderPath: investments
+    fileName: investment
+    openNote: true
+    openIfAlreadyExists: true
+
+```
+
 ```dataviewjs
 const run = async () => {
   const folder = "investments";
@@ -84,9 +104,19 @@ const run = async () => {
       .filter(Boolean);
   };
 
-  const ensureFile = (path) => {
+  const normalizePath = (rawPath) => {
+    if (!rawPath) return null;
+    let path = rawPath.trim();
+    if (path.endsWith("/")) path = path.slice(0, -1);
+    if (!path.endsWith(".md")) path = `${path}.md`;
+    return path;
+  };
+
+  const ensureFile = (rawPath) => {
+    const path = normalizePath(rawPath);
+    if (!path) return null;
     const file = app.vault.getAbstractFileByPath(path);
-    return file instanceof window.TFile ? file : null;
+    return file && typeof file === "object" && "extension" in file ? file : null;
   };
 
   const insertMovement = async (path, line) => {
@@ -265,7 +295,7 @@ const run = async () => {
       attr: {
         type: "number",
         step: "0.01",
-        placeholder: "Valor do aporte",
+        placeholder: "Novo valor total (R$)",
       },
     });
     const noteInput = form.createEl("input", {
@@ -278,16 +308,23 @@ const run = async () => {
 
     form.onsubmit = async (event) => {
       event.preventDefault();
-      const value = parseFloat((valueInput.value || "").replace(",", "."));
-      if (isNaN(value) || value === 0) {
-        new Notice("Informe um valor diferente de zero.");
+      const parsedInput = parseFloat((valueInput.value || "").replace(",", "."));
+      if (isNaN(parsedInput)) {
+        new Notice("Informe o novo valor total.");
+        return;
+      }
+
+      const currentTotal = inv.movements.reduce((sum, move) => sum + move.amount, 0);
+      const delta = parseFloat((parsedInput - currentTotal).toFixed(2));
+      if (Math.abs(delta) < 0.00001) {
+        new Notice("O valor informado já corresponde ao total atual.");
         return;
       }
 
       submitBtn.disabled = true;
       submitBtn.textContent = "Salvando...";
 
-      const amountStr = formatAmount(value);
+      const amountStr = formatAmount(delta);
       const tags = [`#${todayStr}`];
       const note = noteInput.value.trim();
       if (note) {
@@ -304,7 +341,8 @@ const run = async () => {
         noteInput.value = "";
       } catch (error) {
         console.error(error);
-        new Notice("Não foi possível salvar o aporte.");
+        const reason = error?.message || "erro desconhecido";
+        new Notice(`Não foi possível salvar o aporte (${reason}).`);
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "Adicionar aporte";
