@@ -54,6 +54,7 @@ git push origin main              # Publish updates
 
 ### Landing Hub (`Landing.md`)
 - Central dashboard that composes name/avatar from `profile/stats.md` and `profile/pfp.*`, XP from the same stats note, tasks from `Todo.md`, finance balance from the current month note under `finance/<year>/<Month>.md`, investments tagged with the current date, and current-month training sessions.
+- Also shows chapters read in the current month by aggregating `books/` notes (book + standalone entries) and includes quick-launch buttons for Books and other modules.
 - Implements bilingual UI strings (EN/PT) and currency prefix formatting (BRL/USD) driven by `config/settings.md`.
 - XP drives leveling (`level = floor(xp / 1000)`), with progress displayed via a custom progress bar.
 
@@ -75,6 +76,13 @@ git push origin main              # Publish updates
 - Exercises live as individual notes created from `templates/new training exercise.md`. Their `## Sessions` list uses `- date:: YYYY-MM-DD load:: N reps:: N notes:: optional`.
 - `Training.md` can create new exercises, log sessions, award 10 XP per session, show a 60-day heatmap, and tabulate recent sessions across all exercises.
 
+### Books Module (`Books.md`, `books/*.md`)
+- `Books.md` provides a DataviewJS hub to register books (name + total chapters), render a per-book progress bar, and append the next chapter via the **Ler capítulo/Read chapter** button.
+- Each book note lives under `books/` with frontmatter `bookType: book`, `bookName`, `totalChapters`, plus a `## Chapters` section populated with `- chapter:: N finished:: ISO_DATE` lines; progress is derived from those bullets.
+- Standalone chapter logs also live under `books/` with frontmatter `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt`; the hub’s “Registrar capítulo avulso” form gathers the book + chapter, writes a `finished in: <timestamp>` line, and lists the 50 most recent entries without a progress bar.
+- The hub auto-creates the `books/` folder if missing and mirrors the bilingual strings from `config/settings.md`.
+- Logging any chapter (book card or standalone form) awards 20 XP by updating `profile/stats.md`.
+
 ### Config & Profile (`Config.md`, `config/settings.md`, `profile/stats.md`)
 - `Config.md` exposes language and currency dropdowns that update `config/settings.md` frontmatter via the Obsidian API.
 - `profile/stats.md` is a YAML-ish bullet list (`- name:`, `- xp:`). Every automation expects both keys; xp mutations append/update the `- xp:` line.
@@ -91,8 +99,10 @@ git push origin main              # Publish updates
 ├── Todo.md                   # Task board with persisted state
 ├── Investments.md            # Investment tracker and chart
 ├── Training.md               # Training dashboard + exercise creator
+├── Books.md                  # Reading hub + chapter logger
 ├── Config.md                 # Language & currency controls
 ├── README.md                 # High-level usage primer
+├── books/                    # Book notes + standalone chapter logs (gitignored)
 ├── config/
 │   ├── settings.md           # Frontmatter storing language/currency
 │   └── consts.md             # Income/expense category lists
@@ -113,6 +123,9 @@ git push origin main              # Publish updates
 - Task lines: plain bullets, optional `#YYYY-MM-DD` or `#HH:MM` tags for metadata.
 - Investment movements: `- 100 #YYYY-MM-DD #tag`; the dashboard calculates totals from the raw list.
 - Training sessions: `- date:: 2025-11-10 load:: 100 reps:: 5 notes:: optional`.
+- Book chapters: `- chapter:: 3 finished:: 2025-05-22T13:00:00` entries appended under `## Chapters` inside each `books/<title>.md`.
+- Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
+- Each logged chapter (any method) increments XP by 20.
 
 ### Localization & Currency
 - `config/settings.md` frontmatter controls UI strings (en/pt) and currency formatting (BRL/USD). Always mutate via `Config.md` to keep observers in sync.
@@ -137,7 +150,10 @@ git push origin main              # Publish updates
 4. **Track Training**
    - Create exercises via **New training exercise** inside `Training.md`.
    - Log sets via the dashboard form to maintain consistent formatting and XP.
-5. **Adjust UI Preferences**
+5. **Log Books**
+   - Use the top form in `Books.md` to register a title (name + total chapters). The hub writes the note to `books/`.
+   - Click **Ler capítulo/Read chapter** on a card to append the next chapter line; use “Registrar capítulo avulso” for quick logs that only need book + chapter.
+6. **Adjust UI Preferences**
    - Open `Config.md` and change language/currency; the script writes to `config/settings.md` and prompts you to reload notes.
 
 ## Dependencies & External Services
@@ -170,6 +186,7 @@ git push origin main              # Publish updates
 - Task IDs derive from slugified text. Editing the text of an existing task produces a new ID, effectively resetting its stored completion history.
 - XP writes append the `- xp:` line if it disappears; do not convert `profile/stats.md` to frontmatter.
 - Buttons rely on Meta Bind’s `templaterCreateNote` action; disablement or renaming the template paths breaks note creation.
+- `books/` is gitignored to keep personal reading history out of version control; the Books hub will create notes there automatically.
 
 ## Troubleshooting
 1. **Landing metrics show `—`**
@@ -192,4 +209,3 @@ git push origin main              # Publish updates
 1. Are there any critical workflows or patterns I missed?
 2. Any project-specific conventions that should be highlighted?
 3. Are the commands accurate for your development setup?
-

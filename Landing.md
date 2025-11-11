@@ -38,6 +38,7 @@ const run = async () => {
       openTasksLabel: "Open tasks",
       tasksHint: ({ total }) => `${total} total`,
       trainingLabel: "Training sessions",
+      chaptersLabel: "Chapters read",
       balanceLabel: "Financial balance",
       monthHint: ({ shortLabel }) => shortLabel,
       monthFullHint: ({ fullLabel }) => fullLabel,
@@ -50,6 +51,7 @@ const run = async () => {
       openTasksLabel: "Tarefas em aberto",
       tasksHint: ({ total }) => `${total} no total`,
       trainingLabel: "Treinos no mês",
+      chaptersLabel: "Capítulos lidos",
       balanceLabel: "Balanço financeiro",
       monthHint: ({ shortLabel }) => shortLabel,
       monthFullHint: ({ fullLabel }) => fullLabel,
@@ -316,6 +318,70 @@ const run = async () => {
     return total;
   };
 
+  const getMonthlyChaptersRead = async () => {
+    const pages = dv
+      .pages('"books"')
+      .where((p) => p.file?.path?.startsWith("books/"));
+    if (pages.length === 0) return 0;
+
+    const chaptersRegex = /##\s*Chapters[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i;
+    let total = 0;
+
+    for (const page of pages) {
+      const type = (
+        page.booktype ??
+        page.bookType ??
+        page.file?.frontmatter?.bookType ??
+        ""
+      )
+        .toString()
+        .toLowerCase();
+
+      if (type === "entry") {
+        const finishedValue =
+          page.finishedat ??
+          page.finishedAt ??
+          page.file?.frontmatter?.finishedAt ??
+          null;
+        if (!finishedValue) continue;
+        const finished = window.moment(finishedValue, window.moment.ISO_8601, true);
+        if (finished.isValid() && finished.isSame(today, "month") && finished.isSame(today, "year")) {
+          total += 1;
+        }
+        continue;
+      }
+
+      if (type === "book") {
+        try {
+          const content = await dv.io.load(page.file.path);
+          const match = chaptersRegex.exec(content);
+          const body = match ? match[1] : "";
+          body
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.startsWith("-"))
+            .forEach((line) => {
+              const fields = extractFields(line);
+              const finished = fields.finished ?? fields.date ?? null;
+              if (!finished) return;
+              const finishedDate = window.moment(finished, window.moment.ISO_8601, true);
+              if (
+                finishedDate.isValid() &&
+                finishedDate.isSame(today, "month") &&
+                finishedDate.isSame(today, "year")
+              ) {
+                total += 1;
+              }
+            });
+        } catch (error) {
+          console.warn("Could not read book note:", page.file.path, error);
+        }
+      }
+    }
+
+    return total;
+  };
+
   const getFinanceBalance = async () => {
     const noteName =
       currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
@@ -353,12 +419,20 @@ const run = async () => {
     }
   };
 
-  const [tasks, investedThisMonth, balance, xp, trainingThisMonth] = await Promise.all([
+  const [
+    tasks,
+    investedThisMonth,
+    balance,
+    xp,
+    trainingThisMonth,
+    chaptersThisMonth,
+  ] = await Promise.all([
     getTasksSummary(),
     getMonthlyInvestments(),
     getFinanceBalance(),
     getXp(),
     getMonthlyTrainingSessions(),
+    getMonthlyChaptersRead(),
   ]);
 
   const level = Math.floor(xp / 1000);
@@ -447,6 +521,11 @@ const run = async () => {
       hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
     },
     {
+      label: translate("chaptersLabel"),
+      value: `${chaptersThisMonth}`,
+      hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
+    },
+    {
       label: translate("balanceLabel"),
       value: formatCurrency(balance),
       hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
@@ -487,6 +566,7 @@ const run = async () => {
       todo: "To-do",
       investments: "Investments",
       training: "Training",
+      books: "Books",
       config: "Config",
     },
     pt: {
@@ -494,6 +574,7 @@ const run = async () => {
       todo: "Tarefas",
       investments: "Investimentos",
       training: "Treinos",
+      books: "Livros",
       config: "Configurações",
     },
   };
@@ -513,6 +594,7 @@ const run = async () => {
     { key: "todo", icon: "✅", link: "Todo" },
     { key: "investments", icon: "📈", link: "Investments" },
     { key: "training", icon: "🏋️", link: "Training" },
+    { key: "books", icon: "📚", link: "Books" },
     { key: "config", icon: "⚙️", link: "Config" },
   ];
 

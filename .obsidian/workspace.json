@@ -4,21 +4,23 @@
     "type": "split",
     "children": [
       {
-        "id": "87992a71c8fb6734",
+        "id": "a36c12833d8577c7",
         "type": "tabs",
         "children": [
           {
-            "id": "3347ec63467bca09",
+            "id": "38b13d1356c8f6a1",
             "type": "leaf",
+            "pinned": true,
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Investments.md",
+                "file": "Landing.md",
                 "mode": "preview",
                 "source": false
               },
+              "pinned": true,
               "icon": "lucide-file",
-              "title": "Investments"
+              "title": "Landing"
             }
           }
         ]
@@ -171,28 +173,33 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "3347ec63467bca09",
+  "active": "38b13d1356c8f6a1",
   "lastOpenFiles": [
-    "AGENTS.md",
+    "books/Evangelion_2.md",
+    "Landing.md",
+    "Books.md",
+    "README.md",
+    "Config.md",
+    "books/Chainsaw_man-chapter-220-20251111-121504.md",
+    "profile/pfp.jpg",
+    "profile/stats.md",
     "training/exercises/Squats.md",
-    "CLAUDE.md",
     "Training.md",
     "Investments.md",
-    "Landing.md",
     "Todo.md",
     "Finance.md",
-    "Config.md",
-    "README.md",
-    "finance/2025/November.md",
+    "books",
     "config/settings.md",
+    "config/consts.md",
+    "finance/2025/November.md",
+    "AGENTS.md",
+    "CLAUDE.md",
     "training/training.md",
     "templates/new training exercise.md",
     "templates/new",
     "training/exercises",
     "training",
     "2025-11-11.md",
-    "profile/stats.md",
-    "config/consts.md",
     "config",
     "finance/2025/month.md",
     "templates/new finance month.md",
@@ -200,15 +207,10 @@
     "templates/stats template.md",
     "todo/tasks.md",
     "investments/Automatic Reserve.md",
-    "investments/Piggy Bank.md",
-    "investments/Home Purchase.md",
-    "investments/Reserva automática.md",
-    "profile/pfp.jpg",
     "profile",
     "investments",
     "todo",
     "finance/month",
-    "Templates",
-    "templates"
+    "Templates"
   ]
 }
