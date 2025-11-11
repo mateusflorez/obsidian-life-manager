@@ -156,6 +156,31 @@ const run = async () => {
       { heading: "monthly", type: "cycle", statusField: "monthlyStatus", cycle: "month" },
     ];
 
+    const emptyState = () => ({
+      todoStatus: {},
+      dailyStatus: {},
+      weeklyStatus: {},
+      monthlyStatus: {},
+    });
+
+    const loadTodoState = async () => {
+      const file = app.vault.getAbstractFileByPath("todo/state.json");
+      if (!file) return emptyState();
+      try {
+        const raw = await app.vault.read(file);
+        const parsed = JSON.parse(raw);
+        return {
+          todoStatus: parsed?.todoStatus && typeof parsed.todoStatus === "object" ? parsed.todoStatus : {},
+          dailyStatus: parsed?.dailyStatus && typeof parsed.dailyStatus === "object" ? parsed.dailyStatus : {},
+          weeklyStatus: parsed?.weeklyStatus && typeof parsed.weeklyStatus === "object" ? parsed.weeklyStatus : {},
+          monthlyStatus: parsed?.monthlyStatus && typeof parsed.monthlyStatus === "object" ? parsed.monthlyStatus : {},
+        };
+      } catch (error) {
+        console.warn("Landing: could not read todo state.", error);
+        return emptyState();
+      }
+    };
+
     const sectionLines = {};
     let currentHeading = null;
     rawTasks.split("\n").forEach((rawLine) => {
@@ -186,7 +211,7 @@ const run = async () => {
         .filter((item) => item.text.length > 0);
     };
 
-    const todoPage = dv.page("Todo") ?? {};
+    const todoState = await loadTodoState();
 
     const parseStoredDate = (value) => {
       if (!value) return null;
@@ -219,7 +244,7 @@ const run = async () => {
 
     sections.forEach((section) => {
       const items = extractItems(section.heading);
-      const status = todoPage[section.statusField] ?? {};
+      const status = todoState[section.statusField] ?? {};
       items.forEach((item) => {
         total += 1;
         let done = false;

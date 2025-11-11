@@ -67,7 +67,7 @@ git push origin main              # Publish updates
 
 ### Task Manager (`Todo.md`, `todo/tasks.md`)
 - `todo/tasks.md` holds raw bullet lists inside `## todo`, `## Daily`, `## Weekly`, and `## Monthly`.
-- `Todo.md` persists checkbox state inside frontmatter maps (`todoStatus`, `dailyStatus`, etc.) and awards 50 XP per completion by rewriting `profile/stats.md`.
+- `Todo.md` persists checkbox state inside `todo/state.json` (per-section maps) and awards 50 XP per completion by rewriting `profile/stats.md`.
 - Cycle-based sections (daily/weekly/monthly) store the last-complete date to auto-reset checkboxes when the cycle changes; clearing a line in `todo/tasks.md` removes its saved state.
 
 ### Investments (`Investments.md`, `investments/*.md`)
@@ -146,7 +146,7 @@ git push origin main              # Publish updates
 - Month detection relies on English month folder names regardless of localized note titles.
 
 ### State Persistence
-- Task completion state lives in `Todo.md` frontmatter maps keyed by generated slugs.
+- Task completion state lives in `todo/state.json` maps keyed by generated slugs (one per section).
 - XP totals reside in `profile/stats.md`; both Todo and Training modules rewrite the `- xp:` line, so keep it unique and near the top of the file.
 
 ## Development Workflows

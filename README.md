@@ -6,7 +6,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
 
 - `Landing.md`: the main hub with module buttons and the “Overview” panel (avatar, name, metrics for tasks/finance/investments).
 - `Finance.md` + `finance/<year>/<Month>.md`: dashboards and monthly notes (use English month names, e.g., `finance/2025/November.md`). Includes credit card management (`finance/cards/`) and a recurring-expense registry (`finance/recurrences.md`) that auto-seed monthly expenses.
-- `Todo.md` + `todo/tasks.md`: task manager where states persist in the frontmatter.
+- `Todo.md` + `todo/tasks.md`: task manager whose completion state is stored in `todo/state.json` (ignored by git).
 - `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
 - `Training.md` hub + `training/exercises/`: workout dashboard with exercise creator, per-exercise session lists, calendar heatmap, and inline charts.
 - `Books.md` + `books/`: reading tracker with per-book progress bars and standalone chapter logs.
@@ -34,7 +34,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
 
 4. **Tasks**
    - Add tasks to `todo/tasks.md` under `## todo`, `## Daily`, `## Weekly`, and `## Monthly`.
-   - `Todo.md` renders the lists and stores their state in `todoStatus`, `dailyStatus`, etc. Removing a line also clears its saved state.
+   - `Todo.md` renders the lists and stores their completion timestamps in `todo/state.json` (per-section maps). Removing a line also clears its saved state automatically.
 
 5. **Investments**
    - Every note under `investments/` contains `## Movements` with lines like `- value #YYYY-MM-DD (#initial optional)`.

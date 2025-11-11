@@ -1,10 +1,4 @@
 ---
-todoStatus: {}
-dailyStatus:
-  update-investments: 2025-11-11
-  take-creatine: 2025-11-11
-weeklyStatus: {}
-monthlyStatus: {}
 ---
 
 # To-do
@@ -111,6 +105,91 @@ const run = async () => {
     monthly: "monthlyStatus",
   };
 
+  const STATE_PATH = "todo/state.json";
+
+  const createEmptyState = () => ({
+    todoStatus: {},
+    dailyStatus: {},
+    weeklyStatus: {},
+    monthlyStatus: {},
+  });
+
+  let stateFile = app.vault.getAbstractFileByPath(STATE_PATH) ?? null;
+
+  const ensureStateFolder = async () => {
+    const parts = STATE_PATH.split("/");
+    parts.pop();
+    if (!parts.length) return;
+    const folderPath = parts.join("/");
+    if (app.vault.getAbstractFileByPath(folderPath)) return;
+    await app.vault.createFolder(folderPath);
+  };
+
+  const getStateFile = async () => {
+    if (stateFile) {
+      return stateFile;
+    }
+    const existing = app.vault.getAbstractFileByPath(STATE_PATH);
+    if (existing) {
+      stateFile = existing;
+      return stateFile;
+    }
+    await ensureStateFolder();
+    stateFile = await app.vault.create(STATE_PATH, JSON.stringify(createEmptyState(), null, 2));
+    return stateFile;
+  };
+
+  const normalizeState = (value) => {
+    const empty = createEmptyState();
+    if (!value || typeof value !== "object") return empty;
+    Object.keys(empty).forEach((key) => {
+      const bucket = value[key];
+      empty[key] = bucket && typeof bucket === "object" ? { ...bucket } : {};
+    });
+    return empty;
+  };
+
+  const loadState = async () => {
+    const existing = app.vault.getAbstractFileByPath(STATE_PATH);
+    if (existing) {
+      stateFile = existing;
+      try {
+        const raw = await app.vault.read(existing);
+        const parsed = JSON.parse(raw);
+        return normalizeState(parsed);
+      } catch (error) {
+        console.warn("Todo: could not parse state file.", error);
+      }
+    }
+    return createEmptyState();
+  };
+
+  let state = await loadState();
+
+  const saveState = async () => {
+    const fileRef = await getStateFile();
+    await app.vault.modify(fileRef, JSON.stringify(state, null, 2));
+  };
+
+  const migrateFrontmatterState = async () => {
+    const page = dv.page(file.path) ?? {};
+    let mutated = false;
+    Object.values(statusFields).forEach((field) => {
+      const data = page[field];
+      if (data && typeof data === "object" && Object.keys(data).length) {
+        state[field] = { ...(state[field] ?? {}), ...data };
+        mutated = true;
+      }
+    });
+    if (!mutated) return;
+    await saveState();
+    await app.fileManager.processFrontMatter(file, (fm) => {
+      Object.values(statusFields).forEach((field) => delete fm[field]);
+    });
+  };
+
+  await migrateFrontmatterState();
+
   const makeId = (text) =>
     text
       .toLowerCase()
@@ -178,42 +257,40 @@ const run = async () => {
       .filter((item) => item.text.length > 0);
   };
 
-  const page = dv.page(file.path) ?? {};
-  const statusCache = {};
-  Object.values(statusFields).forEach((field) => {
-    const raw = page[field];
-    statusCache[field] = raw && typeof raw === "object" ? { ...raw } : {};
-  });
+  const statusCache = {
+    todoStatus: { ...(state.todoStatus ?? {}) },
+    dailyStatus: { ...(state.dailyStatus ?? {}) },
+    weeklyStatus: { ...(state.weeklyStatus ?? {}) },
+    monthlyStatus: { ...(state.monthlyStatus ?? {}) },
+  };
 
   const persistStatus = async (field, id, value) => {
-    await app.fileManager.processFrontMatter(file, (fm) => {
-      if (!fm[field] || typeof fm[field] !== "object") fm[field] = {};
-      if (value === null || value === undefined) {
-        delete fm[field][id];
-      } else {
-        fm[field][id] = value;
-      }
-    });
-
+    if (!state[field] || typeof state[field] !== "object") state[field] = {};
     if (!statusCache[field]) statusCache[field] = {};
+
     if (value === null || value === undefined) {
+      delete state[field][id];
       delete statusCache[field][id];
     } else {
+      state[field][id] = value;
       statusCache[field][id] = value;
     }
+
+    await saveState();
   };
 
   const cleanupStatus = async (field, validIds) => {
-    const statusMap = statusCache[field] ?? {};
+    if (!state[field] || typeof state[field] !== "object") state[field] = {};
+    const statusMap = state[field];
     const toRemove = Object.keys(statusMap).filter((id) => !validIds.has(id));
-    if (toRemove.length === 0) return;
+    if (!toRemove.length) return;
 
-    await app.fileManager.processFrontMatter(file, (fm) => {
-      if (!fm[field] || typeof fm[field] !== "object") return;
-      toRemove.forEach((id) => delete fm[field][id]);
+    toRemove.forEach((id) => {
+      delete statusMap[id];
+      if (statusCache[field]) delete statusCache[field][id];
     });
 
-    toRemove.forEach((id) => delete statusMap[id]);
+    await saveState();
   };
 
   const insertTask = async (heading, text) => {
