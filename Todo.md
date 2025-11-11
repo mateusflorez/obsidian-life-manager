@@ -144,6 +144,26 @@ const run = async () => {
     toRemove.forEach((id) => delete statusMap[id]);
   };
 
+  const insertTask = async (heading, text) => {
+    const file = app.vault.getAbstractFileByPath(tasksPath);
+    if (!file) throw new Error("tasks.md not found");
+    const content = await app.vault.read(file);
+    const sectionRegex = new RegExp(`(##\\s*${heading}[^\\n]*\\n)([\\s\\S]*?)(?=\\n##\\s+|$)`, "i");
+    const match = sectionRegex.exec(content);
+    const line = `- ${text}\n`;
+    if (match) {
+      const before = content.slice(0, match.index);
+      const after = content.slice(match.index + match[0].length);
+      const body = match[2].trimEnd();
+      const newBody = `${body ? body + "\n" : ""}${line}`;
+      const updated = before + match[1] + newBody + after;
+      await app.vault.modify(file, updated);
+    } else {
+      const updated = `${content.trim()}\n\n## ${heading}\n${line}`;
+      await app.vault.modify(file, updated);
+    }
+  };
+
   const parseStoredDate = (value) => {
     if (!value) return null;
     if (window.moment.isMoment(value)) return value;
@@ -218,6 +238,43 @@ const run = async () => {
 
     if (items.length === 0) {
       wrapper.createEl("p", { text: "No items configured." });
+    }
+
+    const form = wrapper.createEl("form");
+    form.style.display = "flex";
+    form.style.gap = "0.35rem";
+    form.style.marginBottom = "0.5rem";
+    const input = form.createEl("input", {
+      attr: { type: "text", placeholder: `Add to ${section.title}` },
+    });
+    input.style.flex = "1";
+    const button = form.createEl("button", { text: "Add" });
+    button.type = "submit";
+    button.style.cursor = "pointer";
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) {
+        new Notice("Type a task description first.");
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "Saving...";
+      try {
+        await insertTask(section.heading, text);
+        new Notice("Task added! Reload the note to see it here.");
+        input.value = "";
+      } catch (error) {
+        console.error(error);
+        new Notice("Could not add the task.");
+      } finally {
+        button.disabled = false;
+        button.textContent = "Add";
+      }
+    };
+
+    if (items.length === 0) {
       continue;
     }
 

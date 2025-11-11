@@ -29,12 +29,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Investments.md",
+                "file": "Todo.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Investments"
+              "title": "Todo"
             }
           }
         ],
@@ -190,6 +190,7 @@
   },
   "active": "d05490b5783faeb9",
   "lastOpenFiles": [
+    "Investments.md",
     "AGENTS.md",
     "Finance.md",
     "Todo.md",
@@ -197,7 +198,6 @@
     "config/consts.md",
     "profile/stats.md",
     "CLAUDE.md",
-    "Investments.md",
     "config",
     "finance/2025/month.md",
     "finance/2025/November.md",
