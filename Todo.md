@@ -1,6 +1,6 @@
 ---
 todoStatus:
-  wash-towel-and-bedsheets: true
+  wash-towel-and-bedsheets: false
 dailyStatus: {}
 weeklyStatus: {}
 monthlyStatus: {}
