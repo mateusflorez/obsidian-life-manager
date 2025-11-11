@@ -9,6 +9,8 @@ const run = async () => {
   const exercisesFolder = "training/exercises";
   const templatePath = "templates/new training exercise.md";
   const sessionsHeading = "Sessions";
+  const statsPath = "profile/stats.md";
+  const TRAINING_XP = 10;
   const today = window.moment();
   const todayStr = today.format("YYYY-MM-DD");
 
@@ -244,6 +246,23 @@ const run = async () => {
 
   renderHeatmap();
 
+  const incrementTrainingXp = async () => {
+    const statsFile = app.vault.getAbstractFileByPath(statsPath);
+    if (!statsFile) return;
+    let content = await dv.io.load(statsPath);
+    const xpRegex = /^(\s*-\s*xp:\s*)(\d+)/im;
+    if (xpRegex.test(content)) {
+      content = content.replace(xpRegex, (_, prefix, value) => {
+        const current = Number(value) || 0;
+        return `${prefix}${current + TRAINING_XP}`;
+      });
+    } else {
+      const suffix = content.endsWith("\n") || content.length === 0 ? "" : "\n";
+      content = `${content}${suffix}- xp: ${TRAINING_XP}\n`;
+    }
+    await app.vault.modify(statsFile, content);
+  };
+
   const refreshAggregations = async () => {
     await loadExerciseData();
     sessions = Array.from(exerciseCache.values()).flatMap((entry) => entry.sessions);
@@ -451,6 +470,7 @@ const run = async () => {
       if (notesValue) parts.push(`notes:: ${notesValue}`);
       const line = parts.join(" ");
       await insertSession(exerciseEntry, line);
+      await incrementTrainingXp();
       await refreshAggregations();
       updateExerciseSelect();
       loadInput.value = "";
