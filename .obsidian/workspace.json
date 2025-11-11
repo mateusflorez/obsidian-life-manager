@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "templates/new finance month.md",
+                "file": "Investments.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "new finance month"
+              "title": "Investments"
             }
           },
           {
@@ -27,16 +27,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "templates/new task manager.md",
-                "mode": "source",
+                "file": "investments/Porquinho.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "new task manager"
+              "title": "Porquinho"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -186,13 +185,16 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "6c753543e6d6c87c",
+  "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
-    "todo/tasks.md",
+    "investments/Porquinho.md",
     "templates/new finance month.md",
-    "templates/new task manager.md",
+    "Investments.md",
     "Landing.md",
+    "investments",
     "Finance.md",
+    "templates/new task manager.md",
+    "todo/tasks.md",
     "Todo.md",
     "todo",
     "teste.md",
@@ -212,7 +214,6 @@
     "finance/october 1",
     "finance/october/October.md",
     "finance/november/November.md",
-    "finance/october",
-    "finance/november"
+    "finance/october"
   ]
 }

@@ -34,3 +34,20 @@ actions:
     newTab: false
 
 ```
+
+```meta-bind-button
+label: Investments
+icon: chart-line
+style: primary
+class: ""
+cssStyle: ""
+backgroundImage: ""
+tooltip: ""
+id: ""
+hidden: false
+actions:
+  - type: open
+    link: "[[Investments]]"
+    newTab: false
+
+```
