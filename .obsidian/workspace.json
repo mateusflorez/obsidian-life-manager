@@ -24,7 +24,7 @@
             }
           },
           {
-            "id": "8f4c20f422ca0a6b",
+            "id": "4e09ff6c1aa5a0d0",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -188,12 +188,15 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "8f4c20f422ca0a6b",
+  "active": "4e09ff6c1aa5a0d0",
   "lastOpenFiles": [
-    "Landing.md",
+    "Config.md",
     "Finance.md",
-    "finance/inter/2025/November.md",
+    "Landing.md",
     "finance/caju/2025/November.md",
+    "config/consts.md",
+    "config/settings.md",
+    "finance/inter/2025/November.md",
     "finance/caju/2025",
     "finance/caju/recurrences.md",
     "finance/caju/cards",
@@ -211,7 +214,6 @@
     "finance/Inter/2025/November.md",
     "finance/Inter/2025",
     "finance/Inter",
-    "config/consts.md",
     "finance/2025/November.md",
     "finance/cards/Inter.md",
     "finance/cards/README.md",
@@ -219,11 +221,9 @@
     "Achievements.md",
     "profile/stats.md",
     "Todo.md",
-    "config/settings.md",
     "todo/tasks.md",
     "Books.md",
     "books/Chainsaw_man-chapter-220-20251111-124856.md",
-    "Config.md",
     "training/exercises/Squats.md",
     "Training.md",
     "profile/pfp.jpg"

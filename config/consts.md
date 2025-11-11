@@ -11,6 +11,7 @@
 - services
 - adjustment
 - recurrences
+- transport
 
 ## incomeCategories
 - salary

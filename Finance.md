@@ -55,6 +55,7 @@ const run = async () => {
       invalidAccount: "Provide a valid account name.",
       missingAccount: "Create an account to start tracking finances.",
       newMonthHeading: ({ account }) => `New finance month • ${account}`,
+      reloadTooltip: "Reload dashboard",
     },
     pt: {
       accountLabel: "Conta",
@@ -65,6 +66,7 @@ const run = async () => {
       invalidAccount: "Informe um nome válido.",
       missingAccount: "Crie uma conta para começar a registrar finanças.",
       newMonthHeading: ({ account }) => `Novo mês financeiro • ${account}`,
+      reloadTooltip: "Recarregar painel",
     },
   };
 
@@ -417,6 +419,22 @@ const run = async () => {
     };
   };
 
+  const refreshFinancePage = () => {
+    const commands = app?.commands;
+    if (!commands?.executeCommandById) return;
+    const tryRun = (id) => {
+      try {
+        return commands.executeCommandById(id);
+      } catch (error) {
+        console.warn(`Finance refresh command failed: ${id}`, error);
+        return false;
+      }
+    };
+    if (tryRun("dataview:refresh-view")) return;
+    if (tryRun("dataview:reload-dataview")) return;
+    tryRun("dataview:refresh-all-views");
+  };
+
   const ensureExpenseLine = async (path, tag, line) => {
     let content;
     try {
@@ -526,9 +544,21 @@ const run = async () => {
   const accountLabel = accountControls.createEl("label", { text: `${t("accountLabel")}:` });
   accountLabel.style.fontWeight = "600";
 
-  const accountSelect = accountControls.createEl("select");
-  accountSelect.style.flex = "0 0 220px";
+  const accountSelectWrapper = accountControls.createEl("div");
+  accountSelectWrapper.style.display = "flex";
+  accountSelectWrapper.style.alignItems = "center";
+  accountSelectWrapper.style.gap = "0.35rem";
+
+  const accountSelect = accountSelectWrapper.createEl("select");
+  accountSelect.style.minWidth = "220px";
   accountSelect.style.padding = "0.25rem 0.5rem";
+
+  const reloadButton = accountSelectWrapper.createEl("button", { text: "↻" });
+  reloadButton.type = "button";
+  reloadButton.style.padding = "0.25rem 0.45rem";
+  reloadButton.style.cursor = "pointer";
+  reloadButton.title = t("reloadTooltip");
+  reloadButton.onclick = () => refreshFinancePage();
 
   const addAccountForm = accountControls.createEl("form");
   addAccountForm.style.display = "flex";
@@ -683,6 +713,7 @@ const run = async () => {
     }
     updateToolkit(next);
     financeState.notify(next);
+    refreshFinancePage();
     applyAutomationsForAccount(next).catch((error) => console.error(error));
   };
 
@@ -1881,4 +1912,3 @@ const run = async () => {
 
 run();
 ```
-

@@ -418,14 +418,32 @@ const run = async () => {
   };
 
   const getFinanceBalance = async () => {
-    const noteName =
+    const monthName =
       currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
-    const path = `finance/${currentYear}/${noteName}.md`;
-    const file = app.vault.getAbstractFileByPath(path);
-    if (!file) return null;
-    const content = await dv.io.load(path);
 
-    const sumSection = (heading) => {
+    const readAccounts = async () => {
+      const accountsFile = app.vault.getAbstractFileByPath("finance/accounts.json");
+      if (accountsFile) {
+        try {
+          const raw = await app.vault.read(accountsFile);
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length) {
+            return parsed.map((entry) => ({
+              slug: entry.slug || entry.name,
+            })).filter((entry) => entry.slug);
+          }
+        } catch (error) {
+          console.warn("Landing finance balance: could not parse accounts.json", error);
+        }
+      }
+      const root = app.vault.getAbstractFileByPath("finance");
+      if (!root?.children) return [];
+      return root.children
+        .filter((child) => child?.children && child.name && !/^\d{4}$/.test(child.name))
+        .map((child) => ({ slug: child.name }));
+    };
+
+    const sumSection = (content, heading) => {
       const section = content.split(new RegExp(`##\\s*${heading}`, "i"))[1];
       if (!section) return 0;
       const body = section.split(/\n##\s+/)[0];
@@ -439,9 +457,34 @@ const run = async () => {
       }, 0);
     };
 
-    const expenses = sumSection("Expenses");
-    const income = sumSection("Income");
-    return income - expenses;
+    const loadBalanceFromPath = async (path) => {
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      try {
+        const content = await dv.io.load(path);
+        const expenses = sumSection(content, "Expenses");
+        const income = sumSection(content, "Income");
+        return income - expenses;
+      } catch (error) {
+        console.warn("Landing finance balance: could not read", path, error);
+        return null;
+      }
+    };
+
+    const accounts = await readAccounts();
+    let total = 0;
+    let hasData = false;
+    for (const account of accounts) {
+      const path = `finance/${account.slug}/${currentYear}/${monthName}.md`;
+      const balance = await loadBalanceFromPath(path);
+      if (balance === null || balance === undefined) continue;
+      total += balance;
+      hasData = true;
+    }
+
+    if (hasData) return total;
+    const legacyPath = `finance/${currentYear}/${monthName}.md`;
+    return await loadBalanceFromPath(legacyPath);
   };
 
   const getXp = async () => {
