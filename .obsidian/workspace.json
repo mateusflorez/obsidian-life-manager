@@ -10,6 +10,7 @@
           {
             "id": "174b7f24b33c5273",
             "type": "leaf",
+            "pinned": true,
             "state": {
               "type": "markdown",
               "state": {
@@ -17,11 +18,27 @@
                 "mode": "preview",
                 "source": false
               },
+              "pinned": true,
               "icon": "lucide-file",
               "title": "Landing"
             }
+          },
+          {
+            "id": "46de2777b0278da6",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Finance.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Finance"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -171,15 +188,19 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "174b7f24b33c5273",
+  "active": "46de2777b0278da6",
   "lastOpenFiles": [
-    "templates/stats template.md",
+    "finance/2025/month.md",
+    "Finance.md",
     "Landing.md",
+    "finance/2025/November.md",
+    "Investments.md",
     "Todo.md",
+    "templates/new finance month.md",
+    "templates/new investment.md",
+    "templates/stats template.md",
     "profile/stats.md",
     "todo/tasks.md",
-    "Finance.md",
-    "Investments.md",
     "README.md",
     "investments/Automatic Reserve.md",
     "investments/Piggy Bank.md",
@@ -189,14 +210,10 @@
     "investments/Porquinho.md",
     "profile/pfp.jpg",
     "profile",
-    "finance/2025/November.md",
-    "templates/new investment.md",
-    "templates/new finance month.md",
     "templates/new task manager.md",
     "investments",
     "todo",
     "teste.md",
-    "finance/2025/month.md",
     "finance/month/2025-11.md",
     "finance/month",
     "Templates",

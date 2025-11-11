@@ -57,7 +57,7 @@ actions:
 ```
 
 ```dataviewjs
-(() => {
+const run = async () => {
   const pages = dv.pages('"finance"').where(p => {
     const parts = p.file.folder.split('/');
     return parts.length === 2 && parts[0] === 'finance' && !isNaN(parts[1]);
@@ -68,11 +68,86 @@ actions:
     return;
   }
 
-  const years = [...new Set(pages.map(p => p.file.folder.split('/')[1]))].map(Number).sort((a, b) => b - a);
+  const formatCurrency = (value) => `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
+  const makeTagSlug = (value) =>
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
 
-  const yearSelect = dv.container.createEl('select');
+  const parseSection = (content, heading) => {
+    const after = content.split(new RegExp(`##\\s*${heading}`, 'i'))[1];
+    if (!after) return { total: 0, items: [] };
+    const section = after.split(/\n##\s+/)[0];
+    const items = [];
+    let total = 0;
+    section.split('\n').forEach(rawLine => {
+      const line = rawLine.trim();
+      if (!line) return;
+      const match = line.match(/^-?\s*([^:]+)::\s*([\d.,]+)(?:\s*#(.+))?/);
+      if (!match) return;
+      const [, catRaw, valueRaw, noteRaw] = match;
+      const value = parseFloat(valueRaw.replace(',', '.'));
+      if (isNaN(value)) return;
+      total += value;
+      items.push({
+        category: catRaw.trim(),
+        value,
+        note: (noteRaw || '').trim()
+      });
+    });
+    return { total, items };
+  };
+
+  const insertLine = async (path, heading, line) => {
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!file) throw new Error('File not found');
+    const content = await app.vault.read(file);
+    const sectionRegex = new RegExp(`(##\\s*${heading}[^\\n]*\\n)([\\s\\S]*?)(?=\\n##\\s+|$)`, 'i');
+    const match = sectionRegex.exec(content);
+    const lineWithBreak = line.endsWith('\n') ? line : `${line}\n`;
+
+    if (match) {
+      const before = content.slice(0, match.index);
+      const afterContent = content.slice(match.index + match[0].length);
+      const body = match[2].trimEnd();
+      const newBody = `${body ? body + '\n' : ''}${lineWithBreak}`;
+      const updated = before + match[1] + newBody + afterContent;
+      await app.vault.modify(file, updated);
+    } else {
+      const updated = `${content.trim()}\n\n## ${heading}\n${lineWithBreak}`;
+      await app.vault.modify(file, updated);
+    }
+  };
+
+  const years = [...new Set(pages.map(p => p.file.folder.split('/')[1]))].map(Number).sort((a, b) => b - a);
+  const controls = dv.container.createEl('div');
+  controls.style.display = 'flex';
+  controls.style.gap = '0.75rem';
+  controls.style.flexWrap = 'wrap';
+  controls.style.alignItems = 'center';
+  controls.style.margin = '0.5rem 0 1rem';
+
+  const yearLabel = controls.createEl('label', { text: 'Year:' });
+  yearLabel.style.fontWeight = '600';
+
+  const yearSelect = controls.createEl('select');
+  yearSelect.style.padding = '0.25rem 0.5rem';
   years.forEach(y => yearSelect.createEl('option', { text: y, value: y }));
   yearSelect.value = years[0];
+
+  const today = window.moment();
+  const currentYear = today.format('YYYY');
+  const currentMonthName = today.format('MMMM');
+  const currentPath = `finance/${currentYear}/${currentMonthName}.md`;
+
+  const openMonthBtn = controls.createEl('button', { text: `Open ${currentMonthName}` });
+  openMonthBtn.className = 'mod-cta';
+  openMonthBtn.style.cursor = 'pointer';
+  openMonthBtn.onclick = () => app.workspace.openLinkText(currentPath, '', false);
 
   const dataContainer = dv.container.createEl('div');
 
@@ -93,222 +168,211 @@ actions:
     };
   })();
 
-  const parseSectionSum = (content, heading) => {
-    const after = content.split(new RegExp(`##\\s*${heading}`, 'i'))[1];
-    if (!after) return 0;
-    const section = after.split(/\n##\s+/)[0];
-    return section.split('\n').reduce((total, rawLine) => {
-      const line = rawLine.trim();
-      if (!line) return total;
-      const match = line.match(/^-?\s*([^:]+)::\s*([\d.,]+)/);
-      if (!match) return total;
-      const value = parseFloat(match[2].replace(',', '.'));
-      return isNaN(value) ? total : total + value;
-    }, 0);
-  };
-
   const renderYear = async (year) => {
     dataContainer.innerHTML = '';
     const yearPages = pages.where(p => p.file.folder === `finance/${year}`);
-    const monthData = {};
 
+    const monthEntries = [];
     for (const p of yearPages) {
       const month = p.file.name.replace('.md', '');
       const content = await dv.io.load(p.file.path);
-      const exp = parseSectionSum(content, 'Expenses');
-      const rec = parseSectionSum(content, 'Income');
-      if (exp === 0 && rec === 0) continue;
-      monthData[month] = { exp, rec, res: rec - exp };
+      const expenses = parseSection(content, 'Expenses');
+      const income = parseSection(content, 'Income');
+      monthEntries.push({
+        month,
+        file: p.file,
+        expenses,
+        income
+      });
     }
 
-    const months = Object.keys(monthData).sort((a, b) =>
-      new Date(`${b} 1, ${year}`) - new Date(`${a} 1, ${year}`)
-    );
-
-    if (months.length === 0) {
-      dataContainer.createEl('p', { text: 'Nenhum dado financeiro para este ano.' });
+    if (monthEntries.length === 0) {
+      dataContainer.createEl('p', { text: 'No financial data for this year.' });
       return;
     }
 
-    const summary = months.map(m => ({ month: m, ...monthData[m] }));
+    monthEntries.sort((a, b) => new Date(`${b.month} 1, ${year}`) - new Date(`${a.month} 1, ${year}`));
+    const months = monthEntries.map(m => m.month);
 
-    // TABLE
-    dataContainer.createEl('h3', { text: `Summary ${year}` });
-    const tableEl = dataContainer.createEl('div');
-    dv.table(
-      ['Month', 'Expenses', 'Income', 'Balance'],
-      summary.map(s => [
-        s.month,
-        `R$ ${s.exp.toFixed(2).replace('.', ',')}`,
-        `R$ ${s.rec.toFixed(2).replace('.', ',')}`,
-        `R$ ${s.res.toFixed(2).replace('.', ',')}`
-      ]),
-      tableEl
-    );
+    const summaryTable = dataContainer.createEl('div');
+    summaryTable.createEl('h3', { text: `Summary ${year}` });
+    const rows = monthEntries.map(entry => [
+      entry.month,
+      formatCurrency(entry.expenses.total),
+      formatCurrency(entry.income.total),
+      formatCurrency(entry.income.total - entry.expenses.total)
+    ]);
+    dv.table(['Month', 'Expenses', 'Income', 'Balance'], rows, summaryTable);
 
-    // CHART
-    dataContainer.createEl('h3', { text: `Chart ${year}` });
-    const chartDiv = dataContainer.createEl('div', { attr: { style: 'height:400px; margin:20px 0;' } });
+    const chartWrapper = dataContainer.createEl('div');
+    chartWrapper.createEl('h3', { text: `Trend ${year}` });
+    const chartDiv = chartWrapper.createEl('div', { attr: { style: 'height:400px; margin:20px 0;' } });
     loadChartJs().then(() => {
       const canvas = document.createElement('canvas');
       chartDiv.appendChild(canvas);
       new Chart(canvas, {
-        type: 'bar',
+        type: 'line',
         data: {
           labels: months,
           datasets: [
-            { label: 'Expenses', data: summary.map(s => s.exp), backgroundColor: '#FF6384CC', borderColor: '#FF6384' },
-            { label: 'Income', data: summary.map(s => s.rec), backgroundColor: '#36A2EBCC', borderColor: '#36A2EB' },
-            { label: 'Balance', data: summary.map(s => s.res), backgroundColor: '#4BC0C0CC', borderColor: '#4BC0C0' }
+            {
+              label: 'Expenses',
+              data: monthEntries.map(m => m.expenses.total),
+              borderColor: '#FF6384',
+              backgroundColor: '#FF638433',
+              tension: 0.3
+            },
+            {
+              label: 'Income',
+              data: monthEntries.map(m => m.income.total),
+              borderColor: '#36A2EB',
+              backgroundColor: '#36A2EB33',
+              tension: 0.3
+            },
+            {
+              label: 'Balance',
+              data: monthEntries.map(m => m.income.total - m.expenses.total),
+              borderColor: '#4BC0C0',
+              backgroundColor: '#4BC0C033',
+              tension: 0.3
+            }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true, title: { display: true, text: 'R$' } } },
-          plugins: { title: { display: true, text: `Finances ${year}` } }
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            title: { display: true, text: `Finances ${year}` },
+            legend: { position: 'bottom' }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: (value) => `R$ ${value}` }
+            }
+          }
         }
       });
     });
-  };
 
-  renderYear(years[0]);
-  yearSelect.onchange = () => renderYear(yearSelect.value);
-})();
-```
-```dataviewjs
-(() => {
-  // 1. Fetch finance/Year/*.md notes
-  const pages = dv.pages('"finance"').where(p => {
-    const parts = p.file.folder.split('/');
-    return parts.length === 2 && parts[0] === 'finance' && !isNaN(parts[1]);
-  });
+    const monthsGrid = dataContainer.createEl('div');
+    monthsGrid.style.display = 'flex';
+    monthsGrid.style.flexDirection = 'column';
+    monthsGrid.style.gap = '1rem';
+    monthsGrid.style.marginTop = '1rem';
 
-  if (pages.length === 0) {
-    dv.paragraph("❌ Create `finance/2025/November.md` with `- cat:: value #title`");
-    return;
-  }
-
-  // 2. Year select
-  const years = [...new Set(pages.map(p => p.file.folder.split('/')[1]))].map(Number).sort((a, b) => b - a);
-  const yearSelect = dv.container.createEl('select');
-  years.forEach(y => yearSelect.createEl('option', { text: y, value: y }));
-  yearSelect.value = years[0];
-
-  const dataContainer = dv.container.createEl('div');
-
-  const loadChartJs = (() => {
-    let promise;
-    return () => {
-      if (window.Chart) return Promise.resolve();
-      if (!promise) {
-        promise = new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
+    const renderList = (items, parent) => {
+      if (items.length === 0) {
+        parent.createEl('p', { text: 'No entries yet.' }).style.color = 'var(--text-muted)';
+        return;
       }
-      return promise;
+      const list = parent.createEl('ul');
+      list.style.margin = '0';
+      list.style.paddingLeft = '1.1rem';
+      items.forEach(item => {
+        const li = list.createEl('li');
+        const note = item.note ? ` • #${item.note}` : '';
+        li.textContent = `${item.category}: ${formatCurrency(item.value)}${note}`;
+      });
     };
-  })();
 
-  // 3. Render per year
-  const renderYear = async (year) => {
-    dataContainer.innerHTML = '';
-    const yearPages = pages.where(p => p.file.folder === `finance/${year}`);
+    const createEntryForm = (parent, heading, filePath) => {
+      const form = parent.createEl('form');
+      form.style.display = 'flex';
+      form.style.flexDirection = 'column';
+      form.style.gap = '0.35rem';
+      form.style.marginTop = '0.5rem';
 
-    const monthMap = {};
+      const nameInput = form.createEl('input', { attr: { type: 'text', placeholder: 'Category', required: 'true' } });
+      const valueInput = form.createEl('input', { attr: { type: 'number', step: '0.01', placeholder: 'Amount', required: 'true' } });
+      const noteInput = form.createEl('input', { attr: { type: 'text', placeholder: 'Optional tag (e.g., rent)' } });
+      const submitBtn = form.createEl('button', { text: `Add ${heading.toLowerCase()}` });
+      submitBtn.type = 'submit';
+      submitBtn.style.cursor = 'pointer';
 
-    for (const p of yearPages) {
-      const month = p.file.name.replace('.md', '');
-      monthMap[month] = monthMap[month] || { cats: {} };
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const category = nameInput.value.trim();
+        const value = parseFloat((valueInput.value || '').replace(',', '.'));
+        if (!category || isNaN(value) || value === 0) {
+          new Notice('Provide a category and a non-zero amount.');
+          return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
 
-      const content = await dv.io.load(p.file.path);
+        const tag = noteInput.value.trim();
+        const safeTag = tag ? makeTagSlug(tag) : '';
+        const amountStr = Number(value).toFixed(2);
+        const line = `- ${category}:: ${amountStr}${safeTag ? ` #${safeTag}` : ''}`;
 
-      const afterExpenses = content.split(/##\s*Expenses/i)[1];
-      if (!afterExpenses) continue;
-      const expensesSection = afterExpenses.split(/\n##\s+/)[0];
-      const lines = expensesSection.split('\n');
+        try {
+          await insertLine(filePath, heading, line);
+          new Notice(`${heading} added! Reload to see the update.`);
+          nameInput.value = '';
+          valueInput.value = '';
+          noteInput.value = '';
+        } catch (error) {
+          console.error(error);
+          const reason = error?.message || 'unknown error';
+          new Notice(`Could not save entry (${reason}).`);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = `Add ${heading.toLowerCase()}`;
+        }
+      };
+    };
 
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (!line) continue;
+    monthEntries.forEach(entry => {
+      const card = monthsGrid.createEl('div');
+      card.style.border = '1px solid var(--background-modifier-border)';
+      card.style.borderRadius = '10px';
+      card.style.padding = '1rem';
+      card.style.display = 'flex';
+      card.style.flexDirection = 'column';
+      card.style.gap = '0.75rem';
 
-        const match = line.match(/^-?\s*([^:]+)::\s*([\d.,]+)(?:\s*#(.+))?/);
-        if (!match) continue;
+      const cardHeader = card.createEl('div');
+      cardHeader.style.display = 'flex';
+      cardHeader.style.justifyContent = 'space-between';
+      cardHeader.style.alignItems = 'center';
 
-        const [, catRaw, valStr, titleRaw] = match;
-        const cat = catRaw.trim();
-        const value = parseFloat(valStr.replace(',', '.'));
-        if (isNaN(value)) continue;
+      const title = cardHeader.createEl('h3', { text: entry.month });
+      title.style.margin = '0';
 
-        const catData = monthMap[month].cats[cat] = monthMap[month].cats[cat] || { total: 0, items: [] };
-        catData.total += value;
-        catData.items.push({ title: (titleRaw || '-').trim(), value });
-      }
+      const openButton = cardHeader.createEl('button', { text: 'Open month' });
+      openButton.style.cursor = 'pointer';
+      openButton.onclick = () => app.workspace.openLinkText(entry.file.path, '', false);
 
-      if (Object.keys(monthMap[month].cats).length === 0) {
-        delete monthMap[month];
-      }
-    }
+      const columns = card.createEl('div');
+      columns.style.display = 'grid';
+      columns.style.gridTemplateColumns = 'repeat(auto-fit, minmax(240px, 1fr))';
+      columns.style.gap = '1rem';
 
-    const months = Object.keys(monthMap).sort((a, b) =>
-      new Date(`${b} 1, ${year}`) - new Date(`${a} 1, ${year}`)
-    );
+      const buildColumn = (heading, data) => {
+        const col = columns.createEl('div');
+        const colHeader = col.createEl('div');
+        colHeader.style.display = 'flex';
+        colHeader.style.justifyContent = 'space-between';
+        colHeader.style.alignItems = 'baseline';
 
-    if (months.length === 0) {
-      dataContainer.createEl('p', { text: 'No expenses found for this year.' });
-      return;
-    }
+        const colTitle = colHeader.createEl('h4', { text: heading });
+        colTitle.style.margin = '0';
+        colHeader.createEl('span', { text: formatCurrency(data.total) });
 
-    months.forEach(month => {
-      const cats = monthMap[month].cats;
+        renderList(data.items, col);
+        createEntryForm(col, heading, entry.file.path);
+      };
 
-      // PIE CHART (expenses only)
-      dataContainer.createEl('h3', { text: `${month}:` });
-      const pieDiv = dataContainer.createEl('div', { attr: { style: 'height:300px; margin:15px 0;' } });
-
-      const labels = Object.keys(cats);
-      const data = labels.map(c => cats[c].total);
-      const palette = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
-
-      loadChartJs().then(() => {
-        const canvas = document.createElement('canvas');
-        pieDiv.appendChild(canvas);
-        new Chart(canvas, {
-          type: 'pie',
-          data: {
-            labels,
-            datasets: [{
-              data,
-              backgroundColor: labels.map((_, idx) => palette[idx % palette.length] + 'CC')
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { title: { display: true, text: `Expenses - ${month}` }, legend: { position: 'right' } }
-          }
-        });
-      });
-
-      // TABLE (expenses only)
-      const tableDiv = dataContainer.createEl('div');
-      const rows = [];
-      Object.keys(cats).sort().forEach(cat => {
-        rows.push([cat, `R$ ${cats[cat].total.toFixed(2).replace('.', ',')}`]);
-        cats[cat].items.forEach(i => {
-          rows.push([`   ${i.title}`, `R$ ${i.value.toFixed(2).replace('.', ',')}`]);
-        });
-      });
-
-      dv.table(['Category', 'Total'], rows, tableDiv);
+      buildColumn('Income', entry.income);
+      buildColumn('Expenses', entry.expenses);
     });
   };
 
   renderYear(years[0]);
   yearSelect.onchange = () => renderYear(yearSelect.value);
-})();
+};
+
+run();
 ```
