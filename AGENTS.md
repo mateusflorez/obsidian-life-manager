@@ -62,6 +62,8 @@ git push origin main              # Publish updates
 - `Finance.md` renders a yearly overview, per-month cards, and inline forms to append `- category:: amount #tag` entries under `## Income` and `## Expenses`.
 - Categories for the select dropdowns are pulled from `config/consts.md` (`expenseCategories` & `incomeCategories` lists).
 - Monthly notes must live in `finance/<year>/<English Month>.md` even if the title uses another language. The current month is resolved with `moment().format("MMMM")`.
+- The **Credit cards** section inside `Finance.md` writes files under `finance/cards/` (one per card) storing limits + `## Charges` lists (`- id:: ... month:: YYYY-MM amount:: N category:: text note:: optional`). Logged charges show statement progress bars, upcoming totals, and automatically seed the linked finance month with tagged expenses (`#card-bill #card-<slug>-<id>`).
+- The **Recurring expenses** section manages `finance/recurrences.md`, capturing monthly recurring definitions (`- id:: ... title:: ... category:: ... value:: N start:: YYYY-MM active:: true`). When a finance month note exists, the automation block injects both card charges and active recurrences into its `## Expenses`, tagging each entry so the process is idempotent.
 
 ### Task Manager (`Todo.md`, `todo/tasks.md`)
 - `todo/tasks.md` holds raw bullet lists inside `## todo`, `## Daily`, `## Weekly`, and `## Monthly`.
@@ -113,6 +115,8 @@ git push origin main              # Publish updates
 │   ├── settings.md           # Frontmatter storing language/currency
 │   └── consts.md             # Income/expense category lists
 ├── finance/<year>/<Month>.md # Monthly ledgers (Expenses/Income)
+├── finance/cards/            # Card metadata + auto-managed charge lists (gitignored)
+├── finance/recurrences.md    # Recurring expense registry (gitignored)
 ├── investments/*.md          # Per-investment movement logs
 ├── todo/tasks.md             # Source lists consumed by Todo.md
 ├── profile/
@@ -133,6 +137,8 @@ git push origin main              # Publish updates
 - Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
 - Each logged chapter (any method) increments XP by 20.
 - Completed tasks stat: Todo automations append/increment `- completed tasks:: N` in `profile/stats.md`; Achievements relies on this value for task milestones, so keep the line intact.
+- Credit card charges: stored under `finance/cards/<card>.md` as `- id:: abc month:: YYYY-MM amount:: 123.45 category:: groceries note:: optional`. Finance automatically mirrors them into the corresponding month with tags `#card-bill #card-<slug>-<id>` to avoid duplicates.
+- Recurrences: managed via `finance/recurrences.md` lines `- id:: rec-... title:: ... category:: ... value:: 49.90 start:: 2025-01 active:: true note:: optional`. Each active recurrence adds an expense tagged `#recurrence-<id>-<month>` the first time that month note loads.
 - Achievements are derived data; no manual edits needed—keep the source modules consistent so totals remain accurate.
 
 ### Localization & Currency
@@ -155,15 +161,21 @@ git push origin main              # Publish updates
 3. **Manage Tasks**
    - Maintain raw lists in `todo/tasks.md`.
    - Toggle completion in `Todo.md`; XP updates automatically. Removing a task bullet also clears stored status.
-4. **Track Training**
+4. **Manage Credit Cards**
+   - Use the **Credit cards** section in `Finance.md` to register cards (stored under `finance/cards/`) and log statement charges. Progress bars show current utilization; the upcoming list previews future statement totals.
+   - Charges automatically seed the respective finance month via tagged expenses, so you never double-enter card spending.
+5. **Maintain Recurrences**
+   - Add recurring expenses via the **Recurring expenses** widget in `Finance.md`. Entries live in `finance/recurrences.md` and default to a monthly cadence with pause/resume controls.
+   - When a new month note is created, active recurrences inject expenses automatically with month-specific tags.
+6. **Track Training**
    - Create exercises via **New training exercise** inside `Training.md`.
    - Log sets via the dashboard form to maintain consistent formatting and XP.
-5. **Log Books**
+7. **Log Books**
    - Use the top form in `Books.md` to register a title (name + total chapters). The hub writes the note to `books/`.
    - Click **Ler capítulo/Read chapter** on a card to append the next chapter line; use “Registrar capítulo avulso” for quick logs that only need book + chapter.
-6. **Review Achievements**
-   - Open `Achievements.md` to see milestone cards for books, investments, tasks, and training. Colors shift from gray → green → blue → purple → orange as you progress.
-7. **Adjust UI Preferences**
+8. **Review Achievements**
+   - Open `Achievements.md` to see milestone cards for books, investments, tasks, training, credit cards, and levels. Colors shift from gray → green → blue → purple → orange as you progress.
+9. **Adjust UI Preferences**
    - Open `Config.md` and change language/currency; the script writes to `config/settings.md` and prompts you to reload notes.
 
 ## Dependencies & External Services

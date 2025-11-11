@@ -360,6 +360,29 @@ const run = async () => {
     })
     .array();
 
+  const loadCategories = (() => {
+    const cache = {};
+    return async (type) => {
+      if (cache[type]) return cache[type];
+      try {
+        const file = app.vault.getAbstractFileByPath("config/consts.md");
+        if (!file) return (cache[type] = []);
+        const content = await app.vault.read(file);
+        const match = content.match(new RegExp(`##\\s*${type}[\\s\\S]*?(?=\\n##|$)`, "i"));
+        if (!match) return (cache[type] = []);
+        const items = match[0]
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("-"))
+          .map((line) => line.replace(/^-\s*/, "").trim())
+          .filter(Boolean);
+        return (cache[type] = items);
+      } catch {
+        return (cache[type] = []);
+      }
+    };
+  })();
+
   const cardsData = await loadCardsData(dv);
   const recurrenceEntries = await loadRecurrences(dv);
 
@@ -419,6 +442,7 @@ const run = async () => {
     loadCardsData: (dvApi) => loadCardsData(dvApi),
     loadRecurrences: (dvApi) => loadRecurrences(dvApi),
     saveRecurrences,
+    loadCategories,
   };
 };
 
@@ -456,6 +480,8 @@ const run = async () => {
       statementMonth: "Statement month",
       amount: "Amount",
       categoryPlaceholder: "Category (optional)",
+      categorySelectPlaceholder: "Select category (optional)",
+      loadingCategories: "Loading categories...",
       notePlaceholder: "Note (optional)",
       saveCharge: "Log charge",
       saving: "Saving...",
@@ -480,6 +506,8 @@ const run = async () => {
       statementMonth: "Mês da fatura",
       amount: "Valor",
       categoryPlaceholder: "Categoria (opcional)",
+      categorySelectPlaceholder: "Selecione a categoria (opcional)",
+      loadingCategories: "Carregando categorias...",
       notePlaceholder: "Observação (opcional)",
       saveCharge: "Registrar gasto",
       saving: "Salvando...",
@@ -762,9 +790,61 @@ dueDay: ${dueDay}
       const amountInput = chargeForm.createEl("input", {
         attr: { type: "number", step: "0.01", placeholder: t("amount"), required: "true" },
       });
-      const categoryInput = chargeForm.createEl("input", {
-        attr: { type: "text", placeholder: t("categoryPlaceholder") },
-      });
+      const categoryField = chargeForm.createEl("div");
+      categoryField.style.display = "flex";
+      categoryField.style.flexDirection = "column";
+      categoryField.style.gap = "0.25rem";
+
+      const categorySelect = categoryField.createEl("select");
+      categorySelect.style.padding = "0.35rem 0.5rem";
+      categorySelect.disabled = true;
+      categorySelect.createEl("option", { text: t("loadingCategories"), value: "" }).selected = true;
+
+      let placeholderOption;
+      let getCategoryValue = () => "";
+      let resetCategoryField = () => {};
+
+      const enableCategorySelect = (options) => {
+        categorySelect.innerHTML = "";
+        placeholderOption = categorySelect.createEl("option", {
+          text: t("categorySelectPlaceholder"),
+          value: "",
+        });
+        placeholderOption.selected = true;
+        options.forEach((cat) => categorySelect.createEl("option", { text: cat, value: cat }));
+        categorySelect.disabled = false;
+        getCategoryValue = () => categorySelect.value || "";
+        resetCategoryField = () => {
+          categorySelect.value = "";
+          placeholderOption.selected = true;
+        };
+      };
+
+      const fallbackToInput = () => {
+        categorySelect.remove();
+        const fallbackInput = categoryField.createEl("input", {
+          attr: { type: "text", placeholder: t("categoryPlaceholder") },
+        });
+        getCategoryValue = () => fallbackInput.value.trim();
+        resetCategoryField = () => {
+          fallbackInput.value = "";
+        };
+      };
+
+      (async () => {
+        try {
+          const categories = (await toolkit.loadCategories?.("expenseCategories")) ?? [];
+          if (categories.length) {
+            enableCategorySelect(categories);
+          } else {
+            fallbackToInput();
+          }
+        } catch (error) {
+          console.warn("Could not load categories for credit card charges.", error);
+          fallbackToInput();
+        }
+      })();
+
       const noteInput = chargeForm.createEl("input", {
         attr: { type: "text", placeholder: t("notePlaceholder") },
       });
@@ -784,15 +864,16 @@ dueDay: ${dueDay}
         const prevLabel = submitCharge.textContent;
         submitCharge.textContent = t("saving");
         try {
+          const categoryValue = getCategoryValue();
           await appendCharge(card, {
             month: monthValue,
             amount: amountValue,
-            category: categoryInput.value.trim(),
+            category: categoryValue,
             note: noteInput.value.trim(),
           });
           new Notice(t("chargeSaved"));
           amountInput.value = "";
-          categoryInput.value = "";
+          resetCategoryField();
           noteInput.value = "";
           await render();
         } catch (error) {
@@ -1138,28 +1219,30 @@ const run = async () => {
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-  const loadCategories = (() => {
-    const cache = {};
-    return async (type) => {
-      if (cache[type]) return cache[type];
-      try {
-        const file = app.vault.getAbstractFileByPath('config/consts.md');
-        if (!file) return (cache[type] = []);
-        const content = await app.vault.read(file);
-        const match = content.match(new RegExp(`##\\s*${type}[\\s\\S]*?(?=\\n##|$)`, 'i'));
-        if (!match) return (cache[type] = []);
-        const items = match[0]
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => line.startsWith('-'))
-          .map(line => line.replace(/^-\s*/, '').trim())
-          .filter(Boolean);
-        return (cache[type] = items);
-      } catch {
-        return (cache[type] = []);
-      }
-    };
-  })();
+  const loadCategories =
+    window.financeUtils?.loadCategories ||
+    (() => {
+      const cache = {};
+      return async (type) => {
+        if (cache[type]) return cache[type];
+        try {
+          const file = app.vault.getAbstractFileByPath('config/consts.md');
+          if (!file) return (cache[type] = []);
+          const content = await app.vault.read(file);
+          const match = content.match(new RegExp(`##\\s*${type}[\\s\\S]*?(?=\\n##|$)`, 'i'));
+          if (!match) return (cache[type] = []);
+          const items = match[0]
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.startsWith('-'))
+            .map(line => line.replace(/^-\s*/, '').trim())
+            .filter(Boolean);
+          return (cache[type] = items);
+        } catch {
+          return (cache[type] = []);
+        }
+      };
+    })();
 
   const parseSection = (content, heading) => {
     const after = content.split(new RegExp(`##\\s*${heading}`, 'i'))[1];

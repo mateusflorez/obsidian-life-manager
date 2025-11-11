@@ -5,7 +5,7 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
 ## 📁 Structure
 
 - `Landing.md`: the main hub with module buttons and the “Overview” panel (avatar, name, metrics for tasks/finance/investments).
-- `Finance.md` + `finance/<year>/<Month>.md`: dashboards and monthly notes (use English month names, e.g., `finance/2025/November.md`).
+- `Finance.md` + `finance/<year>/<Month>.md`: dashboards and monthly notes (use English month names, e.g., `finance/2025/November.md`). Includes credit card management (`finance/cards/`) and a recurring-expense registry (`finance/recurrences.md`) that auto-seed monthly expenses.
 - `Todo.md` + `todo/tasks.md`: task manager where states persist in the frontmatter.
 - `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
 - `Training.md` hub + `training/exercises/`: workout dashboard with exercise creator, per-exercise session lists, calendar heatmap, and inline charts.
@@ -25,38 +25,42 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
      - Current month financial balance (Income – Expenses of the active note in `finance/`).
 
 2. **Finances**
-   - Click “New finance month” in `Finance.md` to create a note from `templates/new finance month.md`.
+   - Click "New finance month" in `Finance.md` to create a note from `templates/new finance month.md`.
    - Inside each month, log lines as `category:: value #tag`. The dashboards read every category to build tables and charts.
 
-3. **Tasks**
+3. **Credit cards & Recurrences**
+   - Use the **Credit cards** section in `Finance.md` to register cards (files live under `finance/cards/`), monitor utilization bars, and log monthly charges. Logged charges automatically appear inside the corresponding finance month via tagged expenses.
+   - Add long-lived expenses via the **Recurring expenses** widget; entries live in `finance/recurrences.md`, can be paused/resumed, and auto-seed every new month.
+
+4. **Tasks**
    - Add tasks to `todo/tasks.md` under `## todo`, `## Daily`, `## Weekly`, and `## Monthly`.
    - `Todo.md` renders the lists and stores their state in `todoStatus`, `dailyStatus`, etc. Removing a line also clears its saved state.
 
-4. **Investments**
+5. **Investments**
    - Every note under `investments/` contains `## Movements` with lines like `- value #YYYY-MM-DD (#initial optional)`.
-   - In `Investments.md`, type the new total amount; the script saves only the delta with today’s date and (optionally) your custom tag.
+   - In `Investments.md`, type the new total amount; the script saves only the delta with today's date and (optionally) your custom tag.
    - A Chart.js line chart tracks the last 12 months of growth per investment.
 
-5. **Training**
+6. **Training**
    - Open `Training.md` to create exercises (notes live under `training/exercises/` and ship with a volume chart).
    - Each exercise note keeps its own `## Sessions` list via lines like `- date:: 2025-11-10 load:: 100 reps:: 5`.
    - The Training hub aggregates all exercises to show last sessions, total volume, and a calendar heatmap, while each note renders its personal chart + table.
 
-6. **Books**
+7. **Books**
    - Open `Books.md` to register a book by name + total chapters; notes live under `books/`.
-   - Use **Read chapter/Ler capítulo** on a card to append the next `- chapter:: N finished:: ISO` line, or the standalone form for quick “finished in” logs.
+   - Use **Read chapter/Ler capítulo** on a card to append the next `- chapter:: N finished:: ISO` line, or the standalone form for quick "finished in" logs.
    - Every logged chapter (book or standalone) gives you +20 XP automatically.
 
-7. **Config**
+8. **Config**
    - Open `Config.md` to choose the interface language (English or Portuguese) and preferred currency (Real or Dollar). These options only change UI labels/symbols—logic and filenames stay the same.
    - Preferences are stored in `config/settings.md`, so they sync across devices with the vault.
 
-8. **Achievements**
-   - Visit `Achievements.md` to see milestone cards (gray → green → blue → purple → orange) for chapters read, total invested, tasks completed (via the `- completed tasks::` stat), training sessions, and XP levels—each card shows a trophy and progress bar or “Concluído”.
-   - A summary card at the top displays overall achievement completion, so you instantly know how many milestones you’ve finished.
+9. **Achievements**
+   - Visit `Achievements.md` to see milestone cards (gray → green → blue → purple → orange) for chapters read, total invested, tasks completed (via the `- completed tasks::` stat), training sessions, credit cards, and XP levels—each card shows a trophy and progress bar or "Concluído".
+   - A summary card at the top displays overall achievement completion, so you instantly know how many milestones you've finished.
    - Progress updates automatically from the source modules, so keep logging data normally.
 
-9. **Templates**
+10. **Templates**
    - `templates/new finance month.md`: default structure for Expenses/Income.
    - `templates/new training exercise.md`: skeleton for every exercise note (volume chart included).
    - Additional templates can be triggered via Meta Bind for new investments or other workflows.

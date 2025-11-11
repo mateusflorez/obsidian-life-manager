@@ -7,6 +7,10 @@
 - others
 - grocery
 - games
+- taxes
+- services
+- adjustment
+- recurrences
 
 ## incomeCategories
 - salary
