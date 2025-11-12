@@ -1,4 +1,6 @@
 {
   "enabledCssSnippets": [],
-  "accentColor": "#e84f4f"
+  "accentColor": "#e84f4f",
+  "interfaceFontFamily": "Inter",
+  "textFontFamily": "Inter"
 }

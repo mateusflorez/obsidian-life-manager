@@ -46,6 +46,7 @@ const run = async () => {
       taskRemoved: "Task completed and removed.",
       taskRemoveError: "Task completed but could not be removed.",
       addButton: "Add",
+      notePlaceholder: "Tag (optional)",
     },
     pt: {
       openModule: "Abra a nota Todo para ver este módulo.",
@@ -63,6 +64,7 @@ const run = async () => {
       taskRemoved: "Tarefa concluída e removida.",
       taskRemoveError: "Tarefa concluída, mas não pôde ser removida.",
       addButton: "Adicionar",
+      notePlaceholder: "Tag (opcional)",
     },
   };
 
@@ -201,6 +203,7 @@ const run = async () => {
   const parseTaskContent = (rawText) => {
     let dateTag = null;
     let timeTag = null;
+    let noteTag = null;
     let cleaned = rawText;
 
     cleaned = cleaned.replace(/#(\d{4}-\d{2}-\d{2})\b/g, (_, value) => {
@@ -215,7 +218,13 @@ const run = async () => {
 
     cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
 
-    return { text: cleaned, dateTag, timeTag };
+    const noteMatch = cleaned.match(/#[a-z0-9][a-z0-9_-]*$/i);
+    if (noteMatch) {
+      noteTag = noteMatch[0].slice(1);
+      cleaned = cleaned.slice(0, -noteMatch[0].length).trim();
+    }
+
+    return { text: cleaned, dateTag, timeTag, noteTag };
   };
 
   const canonicalHeadings = sections.map((s) => s.heading);
@@ -252,6 +261,7 @@ const run = async () => {
           id: makeId(baseText) || `${heading}-${idx + 1}`,
           dateTag: parsed.dateTag,
           timeTag: parsed.timeTag,
+          noteTag: parsed.noteTag,
         };
       })
       .filter((item) => item.text.length > 0);
@@ -469,17 +479,24 @@ const run = async () => {
     const input = form.createEl("input", {
       attr: { type: "text", placeholder: t("inputPlaceholder", { title: section.title }) },
     });
-    input.style.flex = "1";
+    input.style.flex = "1 1 12rem";
+    input.style.minWidth = "10rem";
+    input.style.maxWidth = "16rem";
     const dateInput = form.createEl("input", {
       attr: { type: "date", "aria-label": "Date (optional)" },
     });
     dateInput.style.flex = "0 0 auto";
-    dateInput.style.minWidth = "11rem";
+    dateInput.style.minWidth = "9rem";
     const timeInput = form.createEl("input", {
       attr: { type: "time", "aria-label": "Time (optional)" },
     });
     timeInput.style.flex = "0 0 auto";
-    timeInput.style.minWidth = "7rem";
+    timeInput.style.minWidth = "6rem";
+    const noteInput = form.createEl("input", {
+      attr: { type: "text", placeholder: t("notePlaceholder") },
+    });
+    noteInput.style.flex = "0 0 8rem";
+    noteInput.style.minWidth = "8rem";
     const button = form.createEl("button", { text: t("addButton") });
     button.type = "submit";
     button.style.cursor = "pointer";
@@ -493,10 +510,17 @@ const run = async () => {
       }
       const dateValue = dateInput.value.trim();
       const timeValue = timeInput.value.trim();
+      const noteValue = noteInput.value.trim();
 
       const parts = [text];
       if (dateValue) parts.push(`#${dateValue}`);
       if (timeValue) parts.push(`#${timeValue}`);
+      if (noteValue) {
+        const normalizedNote = noteValue.replace(/^#+/, "").replace(/\s+/g, "-");
+        if (normalizedNote.length > 0) {
+          parts.push(`#${normalizedNote}`);
+        }
+      }
       const composedText = parts.join(" ");
 
       button.disabled = true;
@@ -507,6 +531,7 @@ const run = async () => {
         input.value = "";
         dateInput.value = "";
         timeInput.value = "";
+        noteInput.value = "";
       } catch (error) {
         console.error(error);
         new Notice(t("taskAddError"));
@@ -526,6 +551,7 @@ const run = async () => {
       const metaParts = [];
       if (item.dateTag) metaParts.push(`#${item.dateTag}`);
       if (item.timeTag) metaParts.push(`#${item.timeTag}`);
+      if (item.noteTag) metaParts.push(`#${item.noteTag}`);
       const { checkbox, row } = createRow(wrapper, item.text, metaParts);
 
       if (section.type === "boolean") {
