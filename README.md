@@ -60,7 +60,11 @@ Welcome to your personal Obsidian vault. It centralizes finances, tasks, investm
    - A summary card at the top displays overall achievement completion, so you instantly know how many milestones you've finished.
    - Progress updates automatically from the source modules, so keep logging data normally.
 
-10. **Templates**
+10. **Profile**
+   - Create a `profile/stats.md` file with at least `- name: Your Name` to set your display name.
+   - Add an avatar image as `profile/pfp.png|jpg|jpeg|webp|gif` to show it on the Landing page.
+
+11. **Templates**
    - `templates/new finance month.md`: default structure for Expenses/Income.
    - `templates/new training exercise.md`: skeleton for every exercise note (volume chart included).
    - Additional templates can be triggered via Meta Bind for new investments or other workflows.
