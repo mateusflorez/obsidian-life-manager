@@ -80,6 +80,24 @@ const run = async () => {
   }
 
   const tasksPath = "todo/tasks.md";
+  const ensureTasksFile = async () => {
+    const file = app.vault.getAbstractFileByPath(tasksPath);
+    if (file) return file;
+    const segments = tasksPath.split("/");
+    const folderPath = segments.slice(0, -1).join("/");
+    if (folderPath && !app.vault.getAbstractFileByPath(folderPath)) {
+      await app.vault.createFolder(folderPath);
+    }
+    const defaultContent = ["## todo", "", "## Daily", "", "## Weekly", "", "## Monthly", ""].join("\n");
+    return app.vault.create(tasksPath, `${defaultContent}\n`);
+  };
+
+  try {
+    await ensureTasksFile();
+  } catch (error) {
+    console.error("Could not ensure tasks.md exists", error);
+  }
+
   let rawTasks = "";
   try {
     rawTasks = await dv.io.load(tasksPath);
