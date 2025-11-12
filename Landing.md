@@ -609,6 +609,11 @@ const run = async () => {
 
   [
     {
+      label: translate("balanceLabel"),
+      value: formatCurrency(balance),
+      hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
+    },
+    {
       label: translate("investedLabel"),
       value: formatCurrency(investedThisMonth),
       hint: translate("monthHint", { shortLabel: localizedMonthShort }),
@@ -626,11 +631,6 @@ const run = async () => {
     {
       label: translate("chaptersLabel"),
       value: `${chaptersThisMonth}`,
-      hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
-    },
-    {
-      label: translate("balanceLabel"),
-      value: formatCurrency(balance),
       hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
     },
   ].forEach((metric) => {
