@@ -10,7 +10,7 @@ Life Manager is an Obsidian vault that consolidates finances, tasks, investments
 - Primary environment: Obsidian 1.5+ with Dataview, Meta Bind, and Templater
 - Languages: Markdown + Dataview JavaScript snippets
 - Data domain: personal finance, productivity, training logs
-- Storage: plain Markdown under `finance/`, `todo/`, `investments/`, `training/`, `profile/`
+- Storage: plain Markdown under `finance/`, `todo/`, `investments/`, `training/`, `mood/`, `profile/`
 
 ## Quick Start
 
@@ -85,6 +85,12 @@ git push origin main              # Publish updates
 - The hub auto-creates the `books/` folder if missing and mirrors the bilingual strings from `config/settings.md`.
 - Logging any chapter (book card or standalone form) awards 20 XP by updating `profile/stats.md`.
 
+### Mood Hub (`Mood.md`, `mood/log.md`)
+- `Mood.md` centralizes mood tracking: a DataviewJS dashboard plots the last 60 days of mood scores via Chart.js and lists no data when the log is empty.
+- Entries live in `mood/log.md` under `## Entries` using `- date:: YYYY-MM-DD mood:: 1-5 note:: optional text`. The script auto-creates the folder/file with a heading if missing.
+- The “Log today’s mood” form renders a slider (1 = 😞, 5 = 😄) plus an optional textarea; saving appends the structured line and refreshes the chart without leaving the page.
+- Strings follow the EN/PT dictionary sourced from `config/settings.md`, so localization works the same as other hubs.
+
 ### Achievements (`Achievements.md`)
 - Consolidates milestone cards for chapters/books, investments, tasks, training, and XP-based levels. Each card progresses through color tiers (gray → green → blue → purple → orange), shows a trophy (gray if pending, white when done), and uses a mini progress bar until the goal is completed.
 - Reads live data from the source modules: total chapters read (books + standalone entries), cumulative positive investment deltas, lifetime completed tasks pulled from `profile/stats.md` (`- completed tasks:: N`), total training sessions from `training/exercises/*`, and the current level (`xp / 1000`).
@@ -107,10 +113,12 @@ git push origin main              # Publish updates
 ├── Investments.md            # Investment tracker and chart
 ├── Training.md               # Training dashboard + exercise creator
 ├── Books.md                  # Reading hub + chapter logger
+├── Mood.md                   # Mood tracking hub (slider + 60-day chart)
 ├── Achievements.md           # Cross-module milestone tracker
 ├── Config.md                 # Language & currency controls
 ├── README.md                 # High-level usage primer
 ├── books/                    # Book notes + standalone chapter logs (gitignored)
+├── mood/                     # Mood log storage (gitignored)
 ├── config/
 │   ├── settings.md           # Frontmatter storing language/currency
 │   └── consts.md             # Income/expense category lists
@@ -126,6 +134,11 @@ git push origin main              # Publish updates
 └── templates/*.md            # Templater sources for buttons
 ```
 
+### Module Icons
+- `.obsidian/plugins/obsidian-icon-folder/data.json` stores the Lucide/emoji icon mapping; each module note is listed at the bottom of that file (`"Landing.md": "LiHome"`, etc.).
+- Current assignments: Landing → `LiHome`, Finance → `LiBriefcase`, Todo → `LiCheckSquare`, Investments → `LiChartLine`, Training → `LiDumbbell`, Books → `LiBookOpen`, Mood → `LiSmile`, Achievements → `LiTrophy`, Config → `⚙`.
+- Add new modules by appending `"<Note>.md": "<Icon>"` to the JSON object; the Icon Folder plugin reads this automatically and Obsidian shows the glyph in the file explorer/tabs.
+
 ## Important Patterns
 
 ### Data Entry Formats
@@ -133,6 +146,7 @@ git push origin main              # Publish updates
 - Task lines: plain bullets, optional `#YYYY-MM-DD` or `#HH:MM` tags for metadata.
 - Investment movements: `- 100 #YYYY-MM-DD #tag`; the dashboard calculates totals from the raw list.
 - Training sessions: `- date:: 2025-11-10 load:: 100 reps:: 5 notes:: optional`.
+- Mood entries: `- date:: 2025-11-10 mood:: 4 note:: opcional` appended under `## Entries` in `mood/log.md`; the Mood hub enforces the 1–5 range and trims multi-line text into a single sentence.
 - Book chapters: `- chapter:: 3 finished:: 2025-05-22T13:00:00` entries appended under `## Chapters` inside each `books/<title>.md`.
 - Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
 - Each logged chapter (any method) increments XP by 20.
@@ -173,9 +187,12 @@ git push origin main              # Publish updates
 7. **Log Books**
    - Use the top form in `Books.md` to register a title (name + total chapters). The hub writes the note to `books/`.
    - Click **Ler capítulo/Read chapter** on a card to append the next chapter line; use “Registrar capítulo avulso” for quick logs that only need book + chapter.
-8. **Review Achievements**
+8. **Track Mood**
+   - Use `Mood.md` to drag the 1–5 slider (😞→😄) and optionally describe the day; saving writes a `- date:: ... mood:: ... note:: ...` line to `mood/log.md`.
+   - The form auto-creates the folder/log if missing so the chart refreshes immediately after each entry, keeping private data inside the gitignored `mood/` directory.
+9. **Review Achievements**
    - Open `Achievements.md` to see milestone cards for books, investments, tasks, training, credit cards, and levels. Colors shift from gray → green → blue → purple → orange as you progress.
-9. **Adjust UI Preferences**
+10. **Adjust UI Preferences**
    - Open `Config.md` and change language/currency; the script writes to `config/settings.md` and prompts you to reload notes.
 
 ## Dependencies & External Services
@@ -183,7 +200,7 @@ git push origin main              # Publish updates
 - **Dataview** supplies `dv.pages`, `dv.io.load`, and `dv.container`.
 - **Meta Bind** powers the declarative buttons that call Templater or open notes.
 - **Templater** populates new note skeletons.
-- **Chart.js** is fetched from the CDN for investment and exercise charts; without connectivity the metrics render but charts do not.
+- **Chart.js** is fetched from the CDN for investment, training, and mood charts; without connectivity the metrics render but charts do not.
 - **Moment.js** (bundled with Obsidian) handles all date math and formatting.
 
 ## Testing & Quality

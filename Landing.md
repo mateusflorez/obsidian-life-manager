@@ -670,6 +670,7 @@ const run = async () => {
       investments: "Investments",
       training: "Training",
       books: "Books",
+      mood: "Mood",
       achievements: "Achievements",
       config: "Config",
     },
@@ -679,6 +680,7 @@ const run = async () => {
       investments: "Investimentos",
       training: "Treinos",
       books: "Livros",
+      mood: "Humor",
       achievements: "Conquistas",
       config: "Configurações",
     },
@@ -700,6 +702,7 @@ const run = async () => {
     { key: "investments", icon: "📈", link: "Investments" },
     { key: "training", icon: "🏋️", link: "Training" },
     { key: "books", icon: "📚", link: "Books" },
+    { key: "mood", icon: "😊", link: "Mood" },
     { key: "achievements", icon: "🏆", link: "Achievements" },
     { key: "config", icon: "⚙️", link: "Config" },
   ];

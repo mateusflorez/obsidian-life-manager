@@ -20,6 +20,8 @@ const run = async () => {
       tasksTargetLabel: ({ count }) => `${count} task(s) completed this cycle`,
       trainingTitle: "Training sessions",
       trainingTargetLabel: ({ count }) => `${count} session(s) logged`,
+      moodTitle: "Mood logs",
+      moodTargetLabel: ({ count }) => `${count} mood log(s)`,
       levelTitle: "Level milestones",
       levelTargetLabel: ({ level }) => `Reach level ${level}`,
       overallTitle: "Achievement completion",
@@ -38,6 +40,8 @@ const run = async () => {
       tasksTargetLabel: ({ count }) => `${count} tarefa(s) finalizada(s) neste ciclo`,
       trainingTitle: "Sessões de treino",
       trainingTargetLabel: ({ count }) => `${count} treino(s) registrado(s)`,
+      moodTitle: "Registros de humor",
+      moodTargetLabel: ({ count }) => `${count} registro(s) de humor`,
       levelTitle: "Marcos de nível",
       levelTargetLabel: ({ level }) => `Chegar ao nível ${level}`,
       overallTitle: "Conclusão das conquistas",
@@ -180,6 +184,24 @@ const run = async () => {
     return total;
   };
 
+  const loadMoodEntries = async () => {
+    const path = "mood/log.md";
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!file) return 0;
+    try {
+      const content = await dv.io.load(path);
+      const sectionMatch = content.match(/##\s*Entries[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i);
+      const body = sectionMatch ? sectionMatch[1] : content;
+      return body
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith("-")).length;
+    } catch (error) {
+      console.warn("Could not read mood log:", error);
+      return 0;
+    }
+  };
+
   const loadCompletedTasksStat = async () => {
     try {
       const stats = await dv.io.load("profile/stats.md");
@@ -215,12 +237,14 @@ const run = async () => {
     totalInvested,
     tasksCompleted,
     trainingSessions,
+    moodEntries,
     currentLevel,
   ] = await Promise.all([
     loadTotalChaptersRead(),
     loadTotalInvested(),
     loadCompletedTasksStat(),
     loadTrainingSessions(),
+    loadMoodEntries(),
     loadXpLevel(),
   ]);
 
@@ -259,6 +283,13 @@ const run = async () => {
       value: trainingSessions,
       tiers: [50, 100, 500, 1000, 5000],
       label: (target) => t("trainingTargetLabel", { count: target }),
+    },
+    {
+      key: "mood",
+      title: t("moodTitle"),
+      value: moodEntries,
+      tiers: [50, 100, 500, 1000, 5000],
+      label: (target) => t("moodTargetLabel", { count: target }),
     },
   ];
 
