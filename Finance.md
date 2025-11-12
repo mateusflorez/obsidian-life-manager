@@ -1469,6 +1469,7 @@ const run = async () => {
       noDataYear: "No financial data for this year.",
       summaryTitle: ({ year }) => `Summary ${year}`,
       trendTitle: ({ year }) => `Trend ${year}`,
+      currentMonthPieTitle: ({ month }) => `Current month expenses • ${month}`,
       financesTitle: ({ year }) => `Finances ${year}`,
       monthHeader: "Month",
       expensesLabel: "Expenses",
@@ -1495,6 +1496,7 @@ const run = async () => {
       noDataYear: "Nenhum dado financeiro para este ano.",
       summaryTitle: ({ year }) => `Resumo ${year}`,
       trendTitle: ({ year }) => `Tendência ${year}`,
+      currentMonthPieTitle: ({ month }) => `Despesas do mês atual • ${month}`,
       financesTitle: ({ year }) => `Finanças ${year}`,
       monthHeader: "Mês",
       expensesLabel: "Despesas",
@@ -1527,6 +1529,7 @@ const run = async () => {
   };
   const currencyConfig = currencySymbols[currency] || currencySymbols.BRL;
   const formatCurrency = (value) => `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
+  const pieColors = ["#22c55e", "#3b82f6", "#f97316", "#a855f7", "#ef4444", "#0ea5e9", "#d946ef", "#facc15", "#14b8a6", "#f472b6"];
   const makeTagSlug = (value) =>
     value
       .toLowerCase()
@@ -1870,6 +1873,71 @@ const run = async () => {
         const openButton = cardHeader.createEl('button', { text: t('openMonth') });
         openButton.style.cursor = 'pointer';
         openButton.onclick = () => app.workspace.openLinkText(entry.file.path, '', false);
+
+        const isCurrentMonth =
+          entry.file.path === currentPath ||
+          (entry.month === currentMonthName && entry.file.folder === `${basePath}/${currentYear}`);
+
+        if (isCurrentMonth) {
+          const pieSection = card.createEl('div');
+          pieSection.style.display = 'flex';
+          pieSection.style.flexDirection = 'column';
+          pieSection.style.gap = '0.35rem';
+
+          pieSection.createEl('h4', {
+            text: t('currentMonthPieTitle', { month: entry.month }),
+          }).style.margin = '0';
+
+          const totalsByCategory = entry.expenses.items.reduce((acc, item) => {
+            acc[item.category] = (acc[item.category] || 0) + item.value;
+            return acc;
+          }, {});
+          const labels = Object.keys(totalsByCategory);
+
+          if (labels.length === 0) {
+            pieSection.createEl('p', { text: t('noEntries') });
+          } else {
+            const chartHolder = pieSection.createEl('div');
+            chartHolder.style.height = '240px';
+            chartHolder.style.position = 'relative';
+            const canvas = chartHolder.createEl('canvas');
+            loadChartJs()
+              .then(() => {
+                new Chart(canvas, {
+                  type: 'pie',
+                  data: {
+                    labels,
+                    datasets: [
+                      {
+                        data: labels.map((label) => Number(totalsByCategory[label].toFixed(2))),
+                        backgroundColor: labels.map((_, idx) => pieColors[idx % pieColors.length]),
+                        borderWidth: 1,
+                      },
+                    ],
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'bottom' },
+                      tooltip: {
+                        callbacks: {
+                          label: (context) => {
+                            const value = context.parsed ?? 0;
+                            return `${context.label}: ${formatCurrency(value)}`;
+                          },
+                        },
+                      },
+                    },
+                  },
+                });
+              })
+              .catch(() => {
+                chartHolder.remove();
+                pieSection.createEl('p', { text: t('noEntries') });
+              });
+          }
+        }
 
         const columns = card.createEl('div');
         columns.style.display = 'grid';
