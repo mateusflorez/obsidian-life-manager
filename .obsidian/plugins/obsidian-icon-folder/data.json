@@ -6,11 +6,11 @@
     "emojiStyle": "native",
     "iconColor": null,
     "recentlyUsedIcons": [
+      "LiBookOpen",
       "LiTrophy",
       "LiBook",
       "⚙",
-      "LiBriefcase",
-      "LiChartLine"
+      "LiBriefcase"
     ],
     "recentlyUsedIconsSize": 5,
     "rules": [],
@@ -40,6 +40,6 @@
   "Investments.md": "LiChartLine",
   "Finance.md": "LiBriefcase",
   "Config.md": "⚙",
-  "Books.md": "LiBook",
+  "Books.md": "LiBookOpen",
   "Achievements.md": "LiTrophy"
 }
