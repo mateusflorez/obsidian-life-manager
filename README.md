@@ -1,88 +1,85 @@
 # Life Manager Vault
 
-Welcome to your personal Obsidian vault. It centralizes finances, tasks, investments, and profile data in one place powered by Dataview, Meta Bind, and Templater.
+## 1. Welcome
 
-## 📁 Structure
+Life Manager is an Obsidian-first dashboard that centralizes finances, tasks, investments, workouts, books, mood tracking, and achievements. DataviewJS, Meta Bind, and Templater power the automations that create notes, persist state, and keep XP totals in sync. Open `Landing.md`, set your name/avatar in `profile/stats.md`, and use the quick buttons to jump into each module.
 
-- `Landing.md`: the main hub with module buttons and the “Overview” panel (avatar, name, metrics for tasks/finance/investments).
-- `Finance.md` + `finance/<year>/<Month>.md`: dashboards and monthly notes (use English month names, e.g., `finance/2025/November.md`). Includes credit card management (`finance/cards/`) and a recurring-expense registry (`finance/recurrences.md`) that auto-seed monthly expenses.
-- `Todo.md` + `todo/tasks.md`: task manager whose completion state is stored in `todo/state.json` (ignored by git).
-- `Investments.md` + `investments/*.md`: per-investment notes with movement logs, growth chart, and form to update totals.
-- `Training.md` hub + `training/exercises/`: workout dashboard with exercise creator, per-exercise session lists, calendar heatmap, and inline charts.
-- `Books.md` + `books/`: reading tracker with per-book progress bars and standalone chapter logs.
-- `Achievements.md`: milestone cards that summarize progress across modules (books, finance, tasks, training).
-- `Config.md` + `config/settings.md`: UI preferences (currently language selection) that cascade through the dashboards.
-- `profile/`: stores `stats.md` (user data) and `pfp.*` (avatar rendered on the Landing page).
-- `templates/`: Templater files used by the Meta Bind buttons (new finance month, new investment, etc.).
+## 2. How to Update the Vault
 
-## 🚀 How to use
+1. Use git source control of git plugin to pull the latest changes
+2. Or manually download the latest release from the GitHub repository
 
-1. **Landing / Overview**
-   - Update `profile/stats.md` with `- name: Your Name` and add a picture at `profile/pfp.png|jpg|jpeg|webp|gif`.
-   - The panel shows:
-     - Amount invested in the current month (sums contributions tagged with the current date in `investments/`).
-     - Open tasks (todo/daily/weekly/monthly) using the persisted state in `Todo.md`.
-     - Current month financial balance (Income – Expenses of the active note in `finance/`).
+## 3. How to Use Each Module
 
-2. **Finances**
-   - Click "New finance month" in `Finance.md` to create a note from `templates/new finance month.md`.
-   - Inside each month, log lines as `category:: value #tag`. The dashboards read every category to build tables and charts.
+### Landing
+- Edit `profile/stats.md` (`- name:` and `- xp:`) and place an avatar at `profile/pfp.png|jpg|jpeg|webp|gif`.
+- `Landing.md` shows your XP/level, avatar, and cards for monthly investments, open tasks, training sessions, chapters read, financial balance, and a quick-launch strip to every module.
 
-3. **Credit cards & Recurrences**
-   - Use the **Credit cards** section in `Finance.md` to register cards (files live under `finance/cards/`), monitor utilization bars, and log monthly charges. Logged charges automatically appear inside the corresponding finance month via tagged expenses.
-   - Add long-lived expenses via the **Recurring expenses** widget; entries live in `finance/recurrences.md`, can be paused/resumed, and auto-seed every new month.
+### Finance & Credit Cards
+- Click **New finance month** to scaffold `finance/<account>/<year>/<English Month>.md` from the template.
+- Log income/expenses as `- category:: value #optional-tag`.
+- The yearly dashboard renders a summary table, a trend chart, and per-month cards with inline “Add income/expense” forms.
+- **Credit cards** (`finance/cards/`) store limit, close/due dates, and charges. Logged charges are mirrored into the monthly note using tagged expenses.
+- **Recurrences** (`finance/recurrences.md`) define `- id:: ... title:: ... value:: N` entries that auto-populate each month. You can pause/resume them from the dashboard.
+- A pie chart inside the current month card visualizes category splits for the ongoing month.
 
-4. **Tasks**
-   - Add tasks to `todo/tasks.md` under `## todo`, `## Daily`, `## Weekly`, and `## Monthly`.
-   - `Todo.md` renders the lists and stores their completion timestamps in `todo/state.json` (per-section maps). Removing a line also clears its saved state automatically.
+### Tasks
+- `todo/tasks.md` contains the headings `## todo`, `## Daily`, `## Weekly`, `## Monthly`. The dashboard auto-creates this note with empty headings if it is missing.
+- Manage text-only bullets in that file; `Todo.md` renders them with checkboxes and awards 50 XP per completion, saving state in `todo/state.json`.
+- Removing a bullet also clears its stored completion history.
 
-5. **Investments**
-   - Every note under `investments/` contains `## Movements` with lines like `- value #YYYY-MM-DD (#initial optional)`.
-   - In `Investments.md`, type the new total amount; the script saves only the delta with today's date and (optionally) your custom tag.
-   - A Chart.js line chart tracks the last 12 months of growth per investment.
+### Investments
+- Each note under `investments/` stores `## Movements` lines like `- 100 #2025-03-10 #bonus`.
+- Inside `Investments.md`, enter the new total to append only the delta tagged with today’s date; the dashboard charts the last 12 months using Chart.js.
 
-6. **Training**
-   - Open `Training.md` to create exercises (notes live under `training/exercises/` and ship with a volume chart).
-   - Each exercise note keeps its own `## Sessions` list via lines like `- date:: 2025-11-10 load:: 100 reps:: 5`.
-   - The Training hub aggregates all exercises to show last sessions, total volume, and a calendar heatmap, while each note renders its personal chart + table.
+### Training
+- Use **New training exercise** to create notes in `training/exercises/`.
+- Log sessions with `- date:: YYYY-MM-DD load:: N reps:: N notes:: optional`.
+- The hub lists exercises, aggregates sessions, awards 10 XP per log, and renders a 60-day heatmap.
 
-7. **Books**
-   - Open `Books.md` to register a book by name + total chapters; notes live under `books/`.
-   - Use **Read chapter/Ler capítulo** on a card to append the next `- chapter:: N finished:: ISO` line, or the standalone form for quick "finished in" logs.
-   - Every logged chapter (book or standalone) gives you +20 XP automatically.
+### Books
+- Register a book in `Books.md` (name + total chapters). Notes live under `books/` with `## Chapters` lines `- chapter:: N finished:: ISO`.
+- The “Read chapter” button appends the next entry; the standalone form logs one-off chapters.
+- Each logged chapter grants 20 XP.
 
-8. **Config**
-   - Open `Config.md` to choose the interface language (English or Portuguese) and preferred currency (Real or Dollar). These options only change UI labels/symbols—logic and filenames stay the same.
-   - Preferences are stored in `config/settings.md`, so they sync across devices with the vault.
+### Mood
+- `Mood.md` offers a slider (1–5) plus an optional note field. Saving writes `- date:: YYYY-MM-DD mood:: N note:: text` to `mood/log.md`, displays a 60-day trend chart, shows recent logs, and adds 10 XP automatically.
 
-9. **Achievements**
-   - Visit `Achievements.md` to see milestone cards (gray → green → blue → purple → orange) for chapters read, total invested, tasks completed (via the `- completed tasks::` stat), training sessions, credit cards, and XP levels—each card shows a trophy and progress bar or "Concluído".
-   - A summary card at the top displays overall achievement completion, so you instantly know how many milestones you've finished.
-   - Progress updates automatically from the source modules, so keep logging data normally.
+### Achievements
+- `Achievements.md` pulls live totals for chapters, investments, tasks, training sessions, mood logs, and XP levels.
+- Cards progress through color tiers (gray → orange) and display trophies, progress bars, and completion badges.
 
-10. **Profile**
-   - Create a `profile/stats.md` file with at least `- name: Your Name` to set your display name.
-   - Add an avatar image as `profile/pfp.png|jpg|jpeg|webp|gif` to show it on the Landing page.
+### Config & Profile
+- `Config.md` writes language/currency preferences to `config/settings.md`; the rest of the vault reads those values for UI strings and currency symbols.
+- `profile/stats.md` must keep a single `- name:`.
+- avatar image files go in `profile/pfp.*`.
 
-11. **Templates**
-   - `templates/new finance month.md`: default structure for Expenses/Income.
-   - `templates/new training exercise.md`: skeleton for every exercise note (volume chart included).
-   - Additional templates can be triggered via Meta Bind for new investments or other workflows.
+### Templates
+- `templates/` houses the Templater sources used by Meta Bind buttons:
+  - `new finance month.md`
+  - `new training exercise.md`
+  - `new investment.md`
+  - `new task manager.md` (reference for the section headings)
 
-## ✅ Requirements
+## 4. Directory Reference
 
-- Obsidian with **Dataview**, **Meta Bind**, and **Templater** enabled.
-- Monthly notes must use English month names so the Landing dashboard can find them via `moment().format("MMMM")`.
+- `Landing.md` — overview dashboard.
+- `Finance.md` / `finance/<account>/<year>/<Month>.md` — finance data + credit cards + recurrences.
+- `Todo.md` / `todo/tasks.md` / `todo/state.json` — task lists and persisted states.
+- `Investments.md` / `investments/*.md` — movement logs and charts.
+- `Training.md` / `training/exercises/*.md` — workouts and per-exercise notes.
+- `Books.md` / `books/` — book notes and chapter entries.
+- `Mood.md` / `mood/log.md` — mood tracker + log.
+- `Achievements.md` — milestone dashboard.
+- `Config.md` / `config/settings.md` — localization + currency.
+- `profile/` — stats and avatar.
+- `templates/` — Templater sources for the Meta Bind buttons.
 
-## 👋 Welcome
+## 5. Requirements & Tips
 
-Open `Landing.md`, set your name/avatar, and start with the main buttons:
+- Enable **Dataview**, **Meta Bind**, and **Templater** in Obsidian.
+- Monthly finance folders must use English month names so scripts that rely on `moment().format("MMMM")` can resolve the files.
+- Chart.js is loaded from the CDN; when offline, charts silently fall back to text summaries.
+- Reload Dataview (Cmd/Ctrl+R) whenever you edit DataviewJS blocks to avoid stale data.
 
-1. Create the current month via **Finance** (“New finance month” button).
-2. Register your tasks in `todo/tasks.md` and follow progress in **To-do**.
-3. Log investments in `investments/` and monitor them inside **Investments**.
-
-That’s it! Your financial and productivity routine stays in sync every time you open Obsidian. Happy tracking! 🧠📈
-
-## 🛠️ Updating the vault
-- use git source control of git plugin to pull the latest changes
+Happy tracking! 🎯
