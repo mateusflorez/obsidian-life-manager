@@ -83,6 +83,9 @@ const run = async () => {
   };
 
   const GLOBAL_KEY = "__lifeManagerPomodoroState__";
+  const statsPath = "profile/stats.md";
+  const FOCUS_XP_PER_MINUTE = 1;
+
   const defaultState = () => ({
     running: false,
     focusMinutes: 25,
@@ -158,6 +161,30 @@ const run = async () => {
       if (!exists) {
         await app.vault.createFolder(partial);
       }
+    }
+  };
+
+  const awardFocusXp = async (minutes) => {
+    const amount = Math.max(0, Math.round(minutes));
+    if (!amount) return;
+    try {
+      const file = app.vault.getAbstractFileByPath(statsPath);
+      if (!file) return;
+      const content = await app.vault.read(file);
+      const xpLineRegex = /(\s*-\s*xp:\s*)(\d+)(.*)/i;
+      if (xpLineRegex.test(content)) {
+        const updated = content.replace(xpLineRegex, (match, prefix, value, suffix = "") => {
+          const next = Number(value) + amount * FOCUS_XP_PER_MINUTE;
+          return `${prefix}${next}${suffix}`;
+        });
+        await app.vault.modify(file, updated);
+      } else {
+        const suffix = content.endsWith("\n") ? "" : "\n";
+        const updated = `${content}${suffix}- xp: ${amount * FOCUS_XP_PER_MINUTE}\n`;
+        await app.vault.modify(file, updated);
+      }
+    } catch (error) {
+      console.warn("Pomodoro: could not update XP", error);
     }
   };
 
@@ -564,6 +591,7 @@ const run = async () => {
           startedISOString,
         });
         await refreshEntries();
+        await awardFocusXp(state.focusMinutes);
         await alertPhaseEnd({ body: t("focusDone") });
         if (state.cyclesCompleted >= state.cyclesTarget) {
           new Notice(t("fullSessionDone"));

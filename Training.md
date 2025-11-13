@@ -102,7 +102,8 @@ const run = async () => {
   const loadExercises = () => {
     const pages = dv
       .pages(`"${exercisesFolder}"`)
-      .where((p) => p.file?.path?.startsWith(`${exercisesFolder}/`));
+      .where((p) => p.file?.path?.startsWith(`${exercisesFolder}/`))
+      .array();
 
     return pages
       .map((p) => ({ name: p.file.name, path: p.file.path }))

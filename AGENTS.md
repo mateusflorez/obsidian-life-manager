@@ -95,6 +95,7 @@ git push origin main              # Publish updates
 - `Pomodoro.md` exposes a DataviewJS timer where you choose focus/break durations (defaults 25/5) and how many cycles to run (e.g., 4 pomodoros in a row).
 - When you press **Start**, the script spins up a countdown, plays a short tone, and issues a desktop notification at every phase transition (focus → break and break → focus). If notification permission is denied, it falls back to Obsidian notices.
 - Every time a focus block finishes, the module appends `- date:: YYYY-MM-DD started:: ISO focus:: N break:: M` under `## Entries` in `pomodoro/log.md`. That log powers the total minutes, today’s minutes, and the recent history list shown on the dashboard.
+- Each focus minute awards 1 XP by incrementing the `- xp:` line inside `profile/stats.md`, so deep-work time feeds your overall level.
 - The timer auto-creates the `pomodoro/` folder/log as needed and keeps the entire UI bilingual (EN/PT) using the same `config/settings.md` selectors.
 
 ### Achievements (`Achievements.md`)
@@ -155,7 +156,7 @@ git push origin main              # Publish updates
 - Investment movements: `- 100 #YYYY-MM-DD #tag`; the dashboard calculates totals from the raw list.
 - Training sessions: `- date:: 2025-11-10 load:: 100 reps:: 5 notes:: optional`.
 - Mood entries: `- date:: 2025-11-10 mood:: 4 note:: opcional` appended under `## Entries` in `mood/log.md`; the Mood hub enforces the 1–5 range and trims multi-line text into a single sentence.
-- Pomodoro focus blocks: `- date:: 2025-11-10 started:: 2025-11-10T08:00:00 focus:: 15 break:: 5` appended under `## Entries` in `pomodoro/log.md`; only the `focus::` value is tallied toward the lifetime and daily minute totals.
+- Pomodoro focus blocks: `- date:: 2025-11-10 started:: 2025-11-10T08:00:00 focus:: 15 break:: 5` appended under `## Entries` in `pomodoro/log.md`; only the `focus::` value is tallied toward the lifetime and daily minute totals and also grants XP (1 per minute) when logged.
 - Book chapters: `- chapter:: 3 finished:: 2025-05-22T13:00:00` entries appended under `## Chapters` inside each `books/<title>.md`.
 - Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
 - Each logged chapter (any method) increments XP by 20.

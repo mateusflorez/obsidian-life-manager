@@ -53,6 +53,7 @@ Life Manager is an Obsidian-first dashboard that centralizes finances, tasks, in
 - `Pomodoro.md` lets you choose the focus and break lengths (for example, 15 minutes on / 5 minutes off) plus how many cycles you want to run.
 - Every finished focus block logs a line inside `pomodoro/log.md`, so the dashboard can total lifetime minutes, highlight today’s focused time, and list the latest sessions.
 - The timer plays a brief tone and triggers a desktop notification at each focus/break transition, so you still get nudged even if Obsidian is unfocused.
+- Each focused minute grants 1 XP automatically by updating `profile/stats.md`, so deep-work streaks contribute to your level.
 
 ### Config & Profile
 - `Config.md` writes language/currency preferences to `config/settings.md`; the rest of the vault reads those values for UI strings and currency symbols.

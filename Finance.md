@@ -371,16 +371,20 @@ const run = async () => {
 
   await Promise.all(accounts.map((account) => ensureAccountStructure(account.slug)));
 
-  const financeState = {
-    listeners: new Set(),
-    currentAccount: null,
-    subscribe(listener) {
+  const financeState = window.financeState ?? {};
+  financeState.listeners = financeState.listeners ?? new Set();
+  financeState.currentAccount = financeState.currentAccount ?? null;
+  financeState.subscribe =
+    financeState.subscribe ??
+    function (listener) {
       if (typeof listener !== "function") return () => {};
       this.listeners.add(listener);
       listener(this.currentAccount);
       return () => this.listeners.delete(listener);
-    },
-    notify(account) {
+    };
+  financeState.notify =
+    financeState.notify ??
+    function (account) {
       this.listeners.forEach((listener) => {
         try {
           listener(account);
@@ -388,11 +392,12 @@ const run = async () => {
           console.warn("Finance listener error", error);
         }
       });
-    },
-    getAccount() {
+    };
+  financeState.getAccount =
+    financeState.getAccount ??
+    function () {
       return this.currentAccount;
-    },
-  };
+    };
   window.financeState = financeState;
 
   const updateToolkit = (account) => {
