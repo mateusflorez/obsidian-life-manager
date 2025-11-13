@@ -6,6 +6,7 @@ profile/*
 training/exercises/*
 mood/*
 books/*
+pomodoro/*
 config/settings.md
 .obsidian/workspace.json
 !**/.gitkeep

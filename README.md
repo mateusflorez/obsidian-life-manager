@@ -2,7 +2,7 @@
 
 ## 1. Welcome
 
-Life Manager is an Obsidian-first dashboard that centralizes finances, tasks, investments, workouts, books, mood tracking, and achievements. DataviewJS, Meta Bind, and Templater power the automations that create notes, persist state, and keep XP totals in sync. Open `Landing.md`, set your name/avatar in `profile/stats.md`, and use the quick buttons to jump into each module.
+Life Manager is an Obsidian-first dashboard that centralizes finances, tasks, investments, workouts, books, mood tracking, pomodoro focus timers, and achievements. DataviewJS, Meta Bind, and Templater power the automations that create notes, persist state, and keep XP totals in sync. Open `Landing.md`, set your name/avatar in `profile/stats.md`, and use the quick buttons to jump into each module.
 
 ## 2. How to Update the Vault
 
@@ -49,6 +49,11 @@ Life Manager is an Obsidian-first dashboard that centralizes finances, tasks, in
 - `Achievements.md` pulls live totals for chapters, investments, tasks, training sessions, mood logs, and XP levels.
 - Cards progress through color tiers (gray → orange) and display trophies, progress bars, and completion badges.
 
+### Pomodoro
+- `Pomodoro.md` lets you choose the focus and break lengths (for example, 15 minutes on / 5 minutes off) plus how many cycles you want to run.
+- Every finished focus block logs a line inside `pomodoro/log.md`, so the dashboard can total lifetime minutes, highlight today’s focused time, and list the latest sessions.
+- The timer plays a brief tone and triggers a desktop notification at each focus/break transition, so you still get nudged even if Obsidian is unfocused.
+
 ### Config & Profile
 - `Config.md` writes language/currency preferences to `config/settings.md`; the rest of the vault reads those values for UI strings and currency symbols.
 - `profile/stats.md` must keep a single `- name:`.
@@ -70,6 +75,7 @@ Life Manager is an Obsidian-first dashboard that centralizes finances, tasks, in
 - `Training.md` / `training/exercises/*.md` — workouts and per-exercise notes.
 - `Books.md` / `books/` — book notes and chapter entries.
 - `Mood.md` / `mood/log.md` — mood tracker + log.
+- `Pomodoro.md` / `pomodoro/log.md` — focus timer with notifications + history.
 - `Achievements.md` — milestone dashboard.
 - `Config.md` / `config/settings.md` — localization + currency.
 - `profile/` — stats and avatar.

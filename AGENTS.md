@@ -10,7 +10,7 @@ Life Manager is an Obsidian vault that consolidates finances, tasks, investments
 - Primary environment: Obsidian 1.5+ with Dataview, Meta Bind, and Templater
 - Languages: Markdown + Dataview JavaScript snippets
 - Data domain: personal finance, productivity, training logs
-- Storage: plain Markdown under `finance/`, `todo/`, `investments/`, `training/`, `mood/`, `profile/`
+- Storage: plain Markdown under `finance/`, `todo/`, `investments/`, `training/`, `mood/`, `pomodoro/`, `profile/`
 
 ## Quick Start
 
@@ -91,6 +91,12 @@ git push origin main              # Publish updates
 - The “Log today’s mood” form renders a slider (1 = 😞, 5 = 😄) plus an optional textarea; saving appends the structured line and refreshes the chart without leaving the page.
 - Strings follow the EN/PT dictionary sourced from `config/settings.md`, so localization works the same as other hubs.
 
+### Pomodoro Timer (`Pomodoro.md`, `pomodoro/log.md`)
+- `Pomodoro.md` exposes a DataviewJS timer where you choose focus/break durations (defaults 25/5) and how many cycles to run (e.g., 4 pomodoros in a row).
+- When you press **Start**, the script spins up a countdown, plays a short tone, and issues a desktop notification at every phase transition (focus → break and break → focus). If notification permission is denied, it falls back to Obsidian notices.
+- Every time a focus block finishes, the module appends `- date:: YYYY-MM-DD started:: ISO focus:: N break:: M` under `## Entries` in `pomodoro/log.md`. That log powers the total minutes, today’s minutes, and the recent history list shown on the dashboard.
+- The timer auto-creates the `pomodoro/` folder/log as needed and keeps the entire UI bilingual (EN/PT) using the same `config/settings.md` selectors.
+
 ### Achievements (`Achievements.md`)
 - Consolidates milestone cards for chapters/books, investments, tasks, training, and XP-based levels. Each card progresses through color tiers (gray → green → blue → purple → orange), shows a trophy (gray if pending, white when done), and uses a mini progress bar until the goal is completed.
 - Reads live data from the source modules: total chapters read (books + standalone entries), cumulative positive investment deltas, lifetime completed tasks pulled from `profile/stats.md` (`- completed tasks:: N`), total training sessions from `training/exercises/*`, and the current level (`xp / 1000`).
@@ -114,11 +120,13 @@ git push origin main              # Publish updates
 ├── Training.md               # Training dashboard + exercise creator
 ├── Books.md                  # Reading hub + chapter logger
 ├── Mood.md                   # Mood tracking hub (slider + 60-day chart)
+├── Pomodoro.md               # Focus timer with notifications + history
 ├── Achievements.md           # Cross-module milestone tracker
 ├── Config.md                 # Language & currency controls
 ├── README.md                 # High-level usage primer
 ├── books/                    # Book notes + standalone chapter logs (gitignored)
 ├── mood/                     # Mood log storage (gitignored)
+├── pomodoro/                 # Pomodoro log storage (gitignored)
 ├── config/
 │   ├── settings.md           # Frontmatter storing language/currency
 │   └── consts.md             # Income/expense category lists
@@ -136,7 +144,7 @@ git push origin main              # Publish updates
 
 ### Module Icons
 - `.obsidian/plugins/obsidian-icon-folder/data.json` stores the Lucide/emoji icon mapping; each module note is listed at the bottom of that file (`"Landing.md": "LiHome"`, etc.).
-- Current assignments: Landing → `LiHome`, Finance → `LiBriefcase`, Todo → `LiCheckSquare`, Investments → `LiChartLine`, Training → `LiDumbbell`, Books → `LiBookOpen`, Mood → `LiSmile`, Achievements → `LiTrophy`, Config → `⚙`.
+- Current assignments: Landing → `LiHome`, Finance → `LiBriefcase`, Todo → `LiCheckSquare`, Investments → `LiChartLine`, Training → `LiDumbbell`, Books → `LiBookOpen`, Mood → `LiSmile`, Pomodoro → `LiTimer`, Achievements → `LiTrophy`, Config → `⚙`.
 - Add new modules by appending `"<Note>.md": "<Icon>"` to the JSON object; the Icon Folder plugin reads this automatically and Obsidian shows the glyph in the file explorer/tabs.
 
 ## Important Patterns
@@ -147,6 +155,7 @@ git push origin main              # Publish updates
 - Investment movements: `- 100 #YYYY-MM-DD #tag`; the dashboard calculates totals from the raw list.
 - Training sessions: `- date:: 2025-11-10 load:: 100 reps:: 5 notes:: optional`.
 - Mood entries: `- date:: 2025-11-10 mood:: 4 note:: opcional` appended under `## Entries` in `mood/log.md`; the Mood hub enforces the 1–5 range and trims multi-line text into a single sentence.
+- Pomodoro focus blocks: `- date:: 2025-11-10 started:: 2025-11-10T08:00:00 focus:: 15 break:: 5` appended under `## Entries` in `pomodoro/log.md`; only the `focus::` value is tallied toward the lifetime and daily minute totals.
 - Book chapters: `- chapter:: 3 finished:: 2025-05-22T13:00:00` entries appended under `## Chapters` inside each `books/<title>.md`.
 - Standalone chapter entries: YAML frontmatter with `bookType: entry`, `bookName`, `chapterNumber`, `finishedAt` plus a body line `finished in: YYYY-MM-DD HH:mm`.
 - Each logged chapter (any method) increments XP by 20.
@@ -190,9 +199,12 @@ git push origin main              # Publish updates
 8. **Track Mood**
    - Use `Mood.md` to drag the 1–5 slider (😞→😄) and optionally describe the day; saving writes a `- date:: ... mood:: ... note:: ...` line to `mood/log.md`.
    - The form auto-creates the folder/log if missing so the chart refreshes immediately after each entry, keeping private data inside the gitignored `mood/` directory.
-9. **Review Achievements**
+9. **Run Pomodoro Sessions**
+   - Visit `Pomodoro.md`, define the focus/break lengths plus how many cycles to chain, and press **Start**.
+   - The timer alerts you with audio + notification, then logs each finished focus block inside `pomodoro/log.md`, which feeds the lifetime/today counters.
+10. **Review Achievements**
    - Open `Achievements.md` to see milestone cards for books, investments, tasks, training, credit cards, and levels. Colors shift from gray → green → blue → purple → orange as you progress.
-10. **Adjust UI Preferences**
+11. **Adjust UI Preferences**
    - Open `Config.md` and change language/currency; the script writes to `config/settings.md` and prompts you to reload notes.
 
 ## Dependencies & External Services
@@ -202,6 +214,7 @@ git push origin main              # Publish updates
 - **Templater** populates new note skeletons.
 - **Chart.js** is fetched from the CDN for investment, training, and mood charts; without connectivity the metrics render but charts do not.
 - **Moment.js** (bundled with Obsidian) handles all date math and formatting.
+- **Web Notifications & AudioContext** power Pomodoro alerts; if permissions are denied the module falls back to Obsidian notices, but the sound requires audio output access.
 
 ## Testing & Quality
 - No automated tests exist; validation is experiential.
@@ -238,6 +251,8 @@ git push origin main              # Publish updates
    - Reconnect to the internet or bundle Chart.js locally; otherwise accept text-only summaries.
 4. **Finance form shows no categories**
    - Validate `config/consts.md` still lists bullet items beneath `## expenseCategories` and `## incomeCategories`.
+5. **Pomodoro makes no sound/notifications**
+   - Confirm the OS/browser granted notification + audio permissions to Obsidian. If notifications are blocked the script falls back to in-app notices and the timer still logs focus minutes.
 
 ## Maintenance Tasks
 - Monthly: create the new finance note, archive/trim old tasks, and review investment deltas for accuracy.

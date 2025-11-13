@@ -40,6 +40,8 @@ const run = async () => {
       trainingLabel: "Training sessions",
       chaptersLabel: "Chapters read",
       balanceLabel: "Financial balance",
+      focusedLabel: "Focused hours",
+      focusedHint: ({ todayHours }) => `Today ${todayHours}`,
       monthHint: ({ shortLabel }) => shortLabel,
       monthFullHint: ({ fullLabel }) => fullLabel,
     },
@@ -53,6 +55,8 @@ const run = async () => {
       trainingLabel: "Treinos no mês",
       chaptersLabel: "Capítulos lidos",
       balanceLabel: "Balanço financeiro",
+      focusedLabel: "Horas concentradas",
+      focusedHint: ({ todayHours }) => `Hoje ${todayHours}`,
       monthHint: ({ shortLabel }) => shortLabel,
       monthFullHint: ({ fullLabel }) => fullLabel,
     },
@@ -120,6 +124,12 @@ const run = async () => {
   const formatCurrency = (value) => {
     if (value === null || value === undefined || isNaN(value)) return "—";
     return `${currencyConfig.prefix} ${currencyConfig.format(value)}`;
+  };
+  const formatHours = (minutes) => {
+    const totalMinutes = Math.max(0, Number(minutes) || 0);
+    const hours = totalMinutes / 60;
+    const decimals = hours >= 10 ? 0 : 1;
+    return `${hours.toFixed(decimals)} h`;
   };
 
   const extractFields = (line) => {
@@ -442,6 +452,49 @@ const run = async () => {
     return total;
   };
 
+  const getFocusStats = async () => {
+    const path = "pomodoro/log.md";
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!file) return { lifetimeMinutes: 0, todayMinutes: 0 };
+    try {
+      const content = await dv.io.load(path);
+      const sectionMatch = content.match(/##\s*Entries[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i);
+      const body = sectionMatch ? sectionMatch[1] : content;
+      const todayStr = today.format("YYYY-MM-DD");
+      return body
+        .split("\n")
+        .reduce(
+          (acc, rawLine) => {
+            const line = rawLine.trim();
+            if (!line.startsWith("-")) return acc;
+            const fields = extractFields(line);
+            const focus = Number(fields.focus ?? fields.minutes ?? fields.duration);
+            if (!Number.isFinite(focus)) return acc;
+            acc.lifetimeMinutes += focus;
+            const dateCandidate = (() => {
+              if (fields.date) {
+                const parsed = window.moment(fields.date, "YYYY-MM-DD", true);
+                if (parsed.isValid()) return parsed.format("YYYY-MM-DD");
+              }
+              if (fields.started) {
+                const parsed = window.moment(fields.started, window.moment.ISO_8601, true);
+                if (parsed.isValid()) return parsed.format("YYYY-MM-DD");
+              }
+              return null;
+            })();
+            if (dateCandidate === todayStr) {
+              acc.todayMinutes += focus;
+            }
+            return acc;
+          },
+          { lifetimeMinutes: 0, todayMinutes: 0 }
+        );
+    } catch (error) {
+      console.warn("Landing: could not read pomodoro log", error);
+      return { lifetimeMinutes: 0, todayMinutes: 0 };
+    }
+  };
+
   const getFinanceBalance = async () => {
     const monthName =
       currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
@@ -529,6 +582,7 @@ const run = async () => {
     xp,
     trainingThisMonth,
     chaptersThisMonth,
+    focusStats,
   ] = await Promise.all([
     getTasksSummary(),
     getMonthlyInvestments(),
@@ -536,6 +590,7 @@ const run = async () => {
     getXp(),
     getMonthlyTrainingSessions(),
     getMonthlyChaptersRead(),
+    getFocusStats(),
   ]);
 
   const level = Math.floor(xp / 1000);
@@ -629,6 +684,13 @@ const run = async () => {
       hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
     },
     {
+      label: translate("focusedLabel"),
+      value: formatHours(focusStats?.lifetimeMinutes ?? 0),
+      hint: translate("focusedHint", {
+        todayHours: formatHours(focusStats?.todayMinutes ?? 0),
+      }),
+    },
+    {
       label: translate("chaptersLabel"),
       value: `${chaptersThisMonth}`,
       hint: translate("monthFullHint", { fullLabel: localizedMonthFull }),
@@ -671,6 +733,7 @@ const run = async () => {
       training: "Training",
       books: "Books",
       mood: "Mood",
+      pomodoro: "Pomodoro",
       achievements: "Achievements",
       config: "Config",
     },
@@ -681,6 +744,7 @@ const run = async () => {
       training: "Treinos",
       books: "Livros",
       mood: "Humor",
+      pomodoro: "Pomodoro",
       achievements: "Conquistas",
       config: "Configurações",
     },
@@ -703,6 +767,7 @@ const run = async () => {
     { key: "training", icon: "🏋️", link: "Training" },
     { key: "books", icon: "📚", link: "Books" },
     { key: "mood", icon: "😊", link: "Mood" },
+    { key: "pomodoro", icon: "⏱️", link: "Pomodoro" },
     { key: "achievements", icon: "🏆", link: "Achievements" },
     { key: "config", icon: "⚙️", link: "Config" },
   ];

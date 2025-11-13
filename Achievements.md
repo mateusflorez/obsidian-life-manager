@@ -22,6 +22,8 @@ const run = async () => {
       trainingTargetLabel: ({ count }) => `${count} session(s) logged`,
       moodTitle: "Mood logs",
       moodTargetLabel: ({ count }) => `${count} mood log(s)`,
+      focusTitle: "Focused hours",
+      focusTargetLabel: ({ hours }) => `${hours} h focused`,
       levelTitle: "Level milestones",
       levelTargetLabel: ({ level }) => `Reach level ${level}`,
       overallTitle: "Achievement completion",
@@ -42,6 +44,8 @@ const run = async () => {
       trainingTargetLabel: ({ count }) => `${count} treino(s) registrado(s)`,
       moodTitle: "Registros de humor",
       moodTargetLabel: ({ count }) => `${count} registro(s) de humor`,
+      focusTitle: "Horas concentradas",
+      focusTargetLabel: ({ hours }) => `${hours} h concentrada(s)`,
       levelTitle: "Marcos de nível",
       levelTargetLabel: ({ level }) => `Chegar ao nível ${level}`,
       overallTitle: "Conclusão das conquistas",
@@ -202,6 +206,30 @@ const run = async () => {
     }
   };
 
+  const loadFocusedMinutes = async () => {
+    const path = "pomodoro/log.md";
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!file) return 0;
+    try {
+      const content = await dv.io.load(path);
+      const sectionMatch = content.match(/##\s*Entries[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i);
+      const body = sectionMatch ? sectionMatch[1] : content;
+      return body
+        .split("\n")
+        .reduce((total, rawLine) => {
+          const line = rawLine.trim();
+          if (!line.startsWith("-")) return total;
+          const fields = extractFields(line);
+          const focus = Number(fields.focus ?? fields.minutes ?? fields.duration);
+          if (!Number.isFinite(focus)) return total;
+          return total + focus;
+        }, 0);
+    } catch (error) {
+      console.warn("Could not read pomodoro log:", error);
+      return 0;
+    }
+  };
+
   const loadCompletedTasksStat = async () => {
     try {
       const stats = await dv.io.load("profile/stats.md");
@@ -219,6 +247,13 @@ const run = async () => {
       maximumFractionDigits: 0,
     });
     return `${symbol} ${formatter.format(value)}`;
+  };
+
+  const formatHours = (minutes) => {
+    const totalMinutes = Math.max(0, Number(minutes) || 0);
+    const hours = totalMinutes / 60;
+    const decimals = hours >= 10 ? 0 : 1;
+    return `${hours.toFixed(decimals)} h`;
   };
 
   const loadXpLevel = async () => {
@@ -239,6 +274,7 @@ const run = async () => {
     trainingSessions,
     moodEntries,
     currentLevel,
+    focusedMinutes,
   ] = await Promise.all([
     loadTotalChaptersRead(),
     loadTotalInvested(),
@@ -246,6 +282,7 @@ const run = async () => {
     loadTrainingSessions(),
     loadMoodEntries(),
     loadXpLevel(),
+    loadFocusedMinutes(),
   ]);
 
   const achievements = [
@@ -283,6 +320,13 @@ const run = async () => {
       value: trainingSessions,
       tiers: [50, 100, 500, 1000, 5000],
       label: (target) => t("trainingTargetLabel", { count: target }),
+    },
+    {
+      key: "focus",
+      title: t("focusTitle"),
+      value: focusedMinutes,
+      tiers: [60, 300, 600, 3000, 6000],
+      label: (target) => t("focusTargetLabel", { hours: target / 60 }),
     },
     {
       key: "mood",
@@ -381,6 +425,8 @@ const run = async () => {
         const progressValue =
           achievement.key === "investments"
             ? `${formatCurrency(achievement.value)} / ${formatCurrency(target)}`
+            : achievement.key === "focus"
+            ? `${formatHours(achievement.value)} / ${formatHours(target)}`
             : t("progress", { current: achievement.value, target });
         const progressLabel = card.createEl("span", { text: progressValue });
         progressLabel.style.fontSize = "0.85rem";
