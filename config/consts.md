@@ -12,6 +12,7 @@
 - adjustment
 - recurrences
 - transport
+- trips
 
 ## incomeCategories
 - salary

@@ -41,6 +41,19 @@ const run = async () => {
       standaloneError: "Could not save the chapter.",
       noStandalone: "No standalone chapters yet.",
       finishedIn: ({ when }) => `finished in: ${when}`,
+      reviewLabel: "Review",
+      reviewPlaceholder: "Share your thoughts about this book",
+      saveReview: "Save review",
+      reviewSaved: "Review saved.",
+      reviewError: "Could not save the review.",
+      reviewEmpty: "No review yet.",
+      reviewRequired: "Write something before saving.",
+      reviewHelper: "Saved under ## Review inside this note.",
+      dropButton: "Drop reading",
+      dropSaved: "Reading marked as dropped.",
+      dropError: "Could not drop this book.",
+      dropHelper: "Sets the total chapters to the last one you read.",
+      dropRequiresProgress: "Read at least one chapter before dropping.",
     },
     pt: {
       registerBook: "Cadastrar livro",
@@ -70,6 +83,19 @@ const run = async () => {
       standaloneError: "Não foi possível salvar o capítulo.",
       noStandalone: "Nenhum capítulo avulso ainda.",
       finishedIn: ({ when }) => `finished in: ${when}`,
+      reviewLabel: "Resenha",
+      reviewPlaceholder: "Compartilhe o que achou do livro",
+      saveReview: "Salvar resenha",
+      reviewSaved: "Resenha salva.",
+      reviewError: "Não foi possível salvar a resenha.",
+      reviewEmpty: "Nenhuma resenha ainda.",
+      reviewRequired: "Escreva algo antes de salvar.",
+      reviewHelper: "Fica salvo na seção ## Review dentro da nota.",
+      dropButton: "Abandonar leitura",
+      dropSaved: "Leitura marcada como abandonada.",
+      dropError: "Não foi possível abandonar o livro.",
+      dropHelper: "Atualiza o total para o último capítulo lido.",
+      dropRequiresProgress: "Leia ao menos um capítulo antes de abandonar.",
     },
   };
 
@@ -178,6 +204,11 @@ const run = async () => {
       })
       .filter(Boolean);
   };
+  const parseReviewSection = (content = "") => {
+    const sectionRegex = /##\s*Review[^\n]*\n([\s\S]*?)(?=\n##\s+|$)/i;
+    const match = sectionRegex.exec(content);
+    return match ? match[1].trim() : "";
+  };
   const loadBooks = () => {
     const pages = dv
       .pages(`"${booksFolder}"`)
@@ -212,6 +243,7 @@ const run = async () => {
           finishedAt,
           path: page.file?.path,
           ms: finishedAt ? new Date(finishedAt).getTime() : 0,
+          review: "",
         };
       })
       .array()
@@ -221,6 +253,7 @@ const run = async () => {
   let books = loadBooks();
   let standaloneEntries = loadStandaloneEntries();
   const bookCache = new Map();
+  const standaloneCache = new Map();
 
   const hydrateBook = async (book) => {
     if (!book?.path) return;
@@ -229,16 +262,34 @@ const run = async () => {
       const chapters = parseChaptersSection(content);
       book.chapters = chapters;
       book.readChapters = chapters.length;
-      bookCache.set(book.path, { content, chapters });
+      const review = parseReviewSection(content);
+      book.review = review;
+      bookCache.set(book.path, { content, chapters, review });
     } catch (error) {
       console.warn("Could not load book note:", book.path, error);
       book.chapters = [];
       book.readChapters = 0;
-      bookCache.set(book.path, { content: "", chapters: [] });
+      book.review = "";
+      bookCache.set(book.path, { content: "", chapters: [], review: "" });
     }
   };
 
   await Promise.all(books.map(hydrateBook));
+  const hydrateStandaloneEntry = async (entry) => {
+    if (!entry?.path) return;
+    try {
+      const content = await dv.io.load(entry.path);
+      const review = parseReviewSection(content);
+      entry.review = review;
+      standaloneCache.set(entry.path, { content, review });
+    } catch (error) {
+      console.warn("Could not load standalone entry:", entry.path, error);
+      entry.review = "";
+      standaloneCache.set(entry.path, { content: "", review: "" });
+    }
+  };
+
+  await Promise.all(standaloneEntries.map(hydrateStandaloneEntry));
 
   const formsSection = module.createEl("section");
   formsSection.style.display = "flex";
@@ -310,7 +361,24 @@ const run = async () => {
   standaloneListContainer.style.flexDirection = "column";
   standaloneListContainer.style.gap = "0.5rem";
 
+  const isBookCompleted = (book) => {
+    const total = Math.max(book.totalChapters || 0, 0);
+    if (total === 0) return false;
+    return (book.readChapters ?? 0) >= total;
+  };
+  const sortBooks = () => {
+    books.sort((a, b) => {
+      const completeA = isBookCompleted(a);
+      const completeB = isBookCompleted(b);
+      if (completeA !== completeB) {
+        return completeA ? 1 : -1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  };
+
   const renderBooksList = () => {
+    sortBooks();
     booksListContainer.innerHTML = "";
     if (books.length === 0) {
       booksListContainer.createEl("p", { text: t("noBooks") });
@@ -371,8 +439,17 @@ const run = async () => {
         }).style.margin = "0";
       }
 
-      const button = card.createEl("button", { text: t("readChapter") });
+      const actionsRow = card.createEl("div");
+      actionsRow.style.display = "flex";
+      actionsRow.style.gap = "0.5rem";
+      actionsRow.style.flexWrap = "wrap";
+
+      const button = actionsRow.createEl("button", { text: t("readChapter") });
       button.disabled = total > 0 ? read >= total : false;
+
+      const dropButton = actionsRow.createEl("button", { text: t("dropButton") });
+      dropButton.type = "button";
+      dropButton.disabled = read <= 0 || isBookCompleted(book);
 
       button.onclick = async () => {
         if (total === 0) {
@@ -399,6 +476,97 @@ const run = async () => {
           button.disabled = total > 0 ? book.readChapters >= total : false;
         }
       };
+      dropButton.onclick = async () => {
+        dropButton.disabled = true;
+        const previousText = dropButton.textContent;
+        dropButton.textContent = t("saving");
+        try {
+          await dropBookAtCurrentChapter(book);
+          new Notice(t("dropSaved"));
+          renderBooksList();
+        } catch (error) {
+          console.error(error);
+          new Notice(error?.message ?? t("dropError"));
+          dropButton.disabled = false;
+        } finally {
+          dropButton.textContent = previousText;
+        }
+      };
+
+      const reviewSection = card.createEl("div");
+      reviewSection.style.marginTop = "0.5rem";
+      reviewSection.style.display = "flex";
+      reviewSection.style.flexDirection = "column";
+      reviewSection.style.gap = "0.35rem";
+
+      const reviewHeading = reviewSection.createEl("strong", { text: t("reviewLabel") });
+      reviewHeading.style.margin = "0";
+
+      const trimmedReview = book.review?.trim();
+      const reviewDisplay = reviewSection.createEl("p", {
+        text: trimmedReview ? trimmedReview : t("reviewEmpty"),
+      });
+      reviewDisplay.style.margin = "0";
+      reviewDisplay.style.whiteSpace = "pre-wrap";
+      const applyReviewStyles = (hasText) => {
+        reviewDisplay.style.color = hasText ? "var(--text-normal)" : "var(--text-muted, #777)";
+        reviewDisplay.style.fontStyle = hasText ? "normal" : "italic";
+      };
+      const hasBookReview = Boolean(trimmedReview);
+      applyReviewStyles(hasBookReview);
+
+      if (!hasBookReview) {
+        const reviewForm = reviewSection.createEl("form");
+        reviewForm.style.display = "flex";
+        reviewForm.style.flexDirection = "column";
+        reviewForm.style.gap = "0.35rem";
+
+        const reviewInput = reviewForm.createEl("textarea", {
+          attr: { rows: "3", placeholder: t("reviewPlaceholder") },
+        });
+        reviewInput.value = book.review ?? "";
+        reviewInput.style.width = "100%";
+        reviewInput.style.resize = "vertical";
+
+        const reviewButton = reviewForm.createEl("button", { text: t("saveReview") });
+        reviewButton.type = "submit";
+        reviewButton.style.alignSelf = "flex-start";
+
+        reviewForm.onsubmit = async (event) => {
+          event.preventDefault();
+          const textValue = reviewInput.value.trim();
+          if (!textValue) {
+            new Notice(t("reviewRequired"));
+            return;
+          }
+          reviewButton.disabled = true;
+          const previousText = reviewButton.textContent;
+          reviewButton.textContent = t("saving");
+          try {
+            const savedReview = await saveReview(book, reviewInput.value);
+            const hasText = Boolean(savedReview);
+            reviewDisplay.textContent = hasText ? savedReview : t("reviewEmpty");
+            reviewInput.value = savedReview;
+            applyReviewStyles(hasText);
+            new Notice(t("reviewSaved"));
+            renderBooksList();
+          } catch (error) {
+            console.error(error);
+            new Notice(t("reviewError"));
+          } finally {
+            reviewButton.disabled = false;
+            reviewButton.textContent = previousText;
+          }
+        };
+      }
+
+      const reviewHelper = reviewSection.createEl("span", { text: t("reviewHelper") });
+      reviewHelper.style.fontSize = "0.85rem";
+      reviewHelper.style.color = "var(--text-muted, #777)";
+      const dropHelper = reviewSection.createEl("span", { text: t("dropHelper") });
+      dropHelper.style.fontSize = "0.8rem";
+      dropHelper.style.color = "var(--text-muted, #999)";
+
     });
   };
 
@@ -417,20 +585,91 @@ const run = async () => {
         row.style.border = "1px solid var(--background-modifier-border, #ccc)";
         row.style.borderRadius = "8px";
         row.style.padding = "0.6rem 0.75rem";
-        row.style.gap = "0.2rem";
+        row.style.gap = "0.4rem";
 
-        row.createEl("strong", {
+        const header = row.createEl("div");
+        header.style.display = "flex";
+        header.style.flexDirection = "column";
+        header.style.gap = "0.15rem";
+
+        header.createEl("strong", {
           text: `${entry.bookName} · ${t("standaloneChapterPlaceholder")} ${entry.chapterNumber}`,
         });
-        row.createEl("span", {
+        header.createEl("span", {
           text: t("finishedIn", { when: formatDateTime(entry.finishedAt) }),
         }).style.color = "var(--text-muted, #777)";
+
+        const reviewSection = row.createEl("div");
+        reviewSection.style.display = "flex";
+        reviewSection.style.flexDirection = "column";
+        reviewSection.style.gap = "0.35rem";
+
+        const reviewHeading = reviewSection.createEl("strong", { text: t("reviewLabel") });
+        reviewHeading.style.margin = "0";
+
+        const trimmedReview = entry.review?.trim();
+        const reviewDisplay = reviewSection.createEl("p", {
+          text: trimmedReview ? trimmedReview : t("reviewEmpty"),
+        });
+        reviewDisplay.style.margin = "0";
+        reviewDisplay.style.whiteSpace = "pre-wrap";
+        const applyReviewStyles = (hasText) => {
+          reviewDisplay.style.color = hasText ? "var(--text-normal)" : "var(--text-muted, #777)";
+          reviewDisplay.style.fontStyle = hasText ? "normal" : "italic";
+        };
+        const hasReview = Boolean(trimmedReview);
+        applyReviewStyles(hasReview);
+
+        if (!hasReview) {
+          const reviewForm = reviewSection.createEl("form");
+          reviewForm.style.display = "flex";
+          reviewForm.style.flexDirection = "column";
+          reviewForm.style.gap = "0.35rem";
+
+          const reviewInput = reviewForm.createEl("textarea", {
+            attr: { rows: "2", placeholder: t("reviewPlaceholder") },
+          });
+          reviewInput.style.width = "100%";
+          reviewInput.style.resize = "vertical";
+
+          const reviewButton = reviewForm.createEl("button", { text: t("saveReview") });
+          reviewButton.type = "submit";
+          reviewButton.style.alignSelf = "flex-start";
+
+          reviewForm.onsubmit = async (event) => {
+            event.preventDefault();
+            const textValue = reviewInput.value.trim();
+            if (!textValue) {
+              new Notice(t("reviewRequired"));
+              return;
+            }
+            reviewButton.disabled = true;
+            const previousText = reviewButton.textContent;
+            reviewButton.textContent = t("saving");
+            try {
+              await saveStandaloneReview(entry, reviewInput.value);
+              new Notice(t("reviewSaved"));
+              renderStandaloneEntries();
+            } catch (error) {
+              console.error(error);
+              new Notice(t("reviewError"));
+            } finally {
+              reviewButton.disabled = false;
+              reviewButton.textContent = previousText;
+            }
+          };
+        }
+
+        const reviewHelper = reviewSection.createEl("span", { text: t("reviewHelper") });
+        reviewHelper.style.fontSize = "0.85rem";
+        reviewHelper.style.color = "var(--text-muted, #777)";
       });
   };
 
   const logChapter = async (book) => {
-    const cache = bookCache.get(book.path) ?? { content: "", chapters: [] };
+    const cache = bookCache.get(book.path) ?? { content: "", chapters: [], review: "" };
     const currentChapters = cache.chapters ?? [];
+    const currentReview = cache.review ?? book.review ?? "";
     const nextChapter = currentChapters.length + 1;
     if (nextChapter > (book.totalChapters || 0)) {
       throw new Error(t("allChaptersDone"));
@@ -465,12 +704,142 @@ const run = async () => {
 
     await app.vault.modify(file, content);
     const updatedChapters = [...currentChapters, { chapter: nextChapter, finished: iso }];
-    bookCache.set(book.path, { content, chapters: updatedChapters });
+    bookCache.set(book.path, { content, chapters: updatedChapters, review: currentReview });
     book.chapters = updatedChapters;
     book.readChapters = updatedChapters.length;
+    book.review = currentReview;
     await incrementBooksXp();
     return nextChapter;
   };
+
+  const saveReview = async (book, reviewText) => {
+    const file = app.vault.getAbstractFileByPath(book.path);
+    if (!file) {
+      throw new Error("Book note is missing.");
+    }
+    const cache = bookCache.get(book.path) ?? { content: null, chapters: null, review: "" };
+    let content = cache.content;
+    if (content === undefined || content === null) {
+      content = await app.vault.read(file);
+    }
+    const trimmed = reviewText.trim();
+    const reviewRegex = /(##\s*Review[^\n]*\n)([\s\S]*?)(?=\n##\s+|$)/i;
+    const match = reviewRegex.exec(content);
+
+    if (match) {
+      if (trimmed) {
+        content =
+          content.slice(0, match.index) +
+          match[1] +
+          `${trimmed}\n` +
+          content.slice(match.index + match[0].length);
+      } else {
+        const before = content.slice(0, match.index).replace(/\s+$/, "");
+        const after = content.slice(match.index + match[0].length).replace(/^\s+/, "");
+        const glue = before && after ? "\n\n" : "";
+        content = `${before}${glue}${after}`;
+      }
+    } else if (trimmed) {
+      const trimmedContent = content.replace(/\s+$/, "");
+      const spacing = trimmedContent ? "\n\n" : "";
+      content = `${trimmedContent}${spacing}## Review\n${trimmed}\n`;
+    }
+
+    if (!/\n$/.test(content)) {
+      content += "\n";
+    }
+
+    await app.vault.modify(file, content);
+    const chapters =
+      Array.isArray(cache.chapters) && cache.chapters.length >= 0
+        ? cache.chapters
+        : parseChaptersSection(content);
+    bookCache.set(book.path, { content, chapters, review: trimmed });
+    book.review = trimmed;
+    return trimmed;
+  };
+
+  const saveStandaloneReview = async (entry, reviewText) => {
+    const file = app.vault.getAbstractFileByPath(entry.path);
+    if (!file) {
+      throw new Error("Standalone entry is missing.");
+    }
+    const cache = standaloneCache.get(entry.path) ?? { content: null, review: "" };
+    let content = cache.content;
+    if (content === undefined || content === null) {
+      content = await app.vault.read(file);
+    }
+    const trimmed = reviewText.trim();
+    const reviewRegex = /(##\s*Review[^\n]*\n)([\s\S]*?)(?=\n##\s+|$)/i;
+    const match = reviewRegex.exec(content);
+
+    if (match) {
+      if (trimmed) {
+        content =
+          content.slice(0, match.index) + match[1] + `${trimmed}\n` + content.slice(match.index + match[0].length);
+      } else {
+        const before = content.slice(0, match.index).replace(/\s+$/, "");
+        const after = content.slice(match.index + match[0].length).replace(/^\s+/, "");
+        const glue = before && after ? "\n\n" : "";
+        content = `${before}${glue}${after}`;
+      }
+    } else if (trimmed) {
+      const trimmedContent = content.replace(/\s+$/, "");
+      const spacing = trimmedContent ? "\n\n" : "";
+      content = `${trimmedContent}${spacing}## Review\n${trimmed}\n`;
+    }
+
+    if (!/\n$/.test(content)) {
+      content += "\n";
+    }
+
+    await app.vault.modify(file, content);
+    const sanitized = trimmed;
+    standaloneCache.set(entry.path, { content, review: sanitized });
+    entry.review = sanitized;
+    return sanitized;
+  };
+
+  const dropBookAtCurrentChapter = async (book) => {
+    const file = app.vault.getAbstractFileByPath(book.path);
+    if (!file) {
+      throw new Error("Book note is missing.");
+    }
+    const finalChapter = Math.max(book.readChapters || 0, 0);
+    if (finalChapter <= 0) {
+      throw new Error(t("dropRequiresProgress"));
+    }
+    const cacheEntry = bookCache.get(book.path) ?? { content: null, chapters: null, review: book.review ?? "" };
+    let content = cacheEntry.content;
+    if (content === undefined || content === null) {
+      content = await app.vault.read(file);
+    }
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
+    const match = frontmatterRegex.exec(content);
+    if (match) {
+      let fm = match[1];
+      if (/totalChapters:\s*\d+/i.test(fm)) {
+        fm = fm.replace(/totalChapters:\s*\d+/i, `totalChapters: ${finalChapter}`);
+      } else {
+        fm = `${fm}\ntotalChapters: ${finalChapter}`;
+      }
+      const after = content.slice(match.index + match[0].length);
+      const normalizedAfter = after.startsWith("\n") ? after : `\n${after}`;
+      content = `---\n${fm}\n---${normalizedAfter}`;
+    } else {
+      const normalizedBody = content.startsWith("\n") ? content.slice(1) : content;
+      content = `---\ntotalChapters: ${finalChapter}\n---\n${normalizedBody}`;
+    }
+    await app.vault.modify(file, content);
+    book.totalChapters = finalChapter;
+    bookCache.set(book.path, {
+      content,
+      chapters: cacheEntry.chapters ?? book.chapters ?? [],
+      review: cacheEntry.review ?? book.review ?? "",
+    });
+    return finalChapter;
+  };
+
 
   bookForm.onsubmit = async (event) => {
     event.preventDefault();
@@ -513,6 +882,9 @@ totalChapters: ${totalChapters}
 > Use [[Books]] to log each chapter you read for this book.
 
 ## Chapters
+
+## Review
+
 `;
       await app.vault.create(targetPath, content);
       const newBook = {
@@ -520,9 +892,10 @@ totalChapters: ${totalChapters}
         totalChapters,
         path: targetPath,
         slug,
+        review: "",
       };
       books.push(newBook);
-      books.sort((a, b) => a.name.localeCompare(b.name));
+      sortBooks();
       await hydrateBook(newBook);
       renderBooksList();
       bookNameInput.value = "";
@@ -576,6 +949,7 @@ finishedAt: ${iso}
 finished in: ${timestamp.format("YYYY-MM-DD HH:mm")}
 `;
       await app.vault.create(targetPath, content);
+      standaloneCache.set(targetPath, { content, review: "" });
       await incrementBooksXp();
       standaloneEntries.unshift({
         bookName,
@@ -583,6 +957,7 @@ finished in: ${timestamp.format("YYYY-MM-DD HH:mm")}
         finishedAt: iso,
         path: targetPath,
         ms: new Date(iso).getTime(),
+        review: "",
       });
       renderStandaloneEntries();
       standaloneBookInput.value = "";
