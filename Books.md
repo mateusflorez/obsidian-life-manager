@@ -141,6 +141,23 @@ const run = async () => {
     await app.vault.modify(statsFile, content);
   };
 
+  const toMs = (value) => {
+    if (!value) return 0;
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : 0;
+    }
+    if (typeof value === "string") {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    }
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? 0 : value.getTime();
+    }
+    if (typeof value === "object" && typeof value.ts === "number") {
+      return Number.isFinite(value.ts) ? value.ts : 0;
+    }
+    return 0;
+  };
   const asString = (value = "") => `${value ?? ""}`;
   const removeDiacritics = (value = "") =>
     asString(value)
@@ -217,11 +234,14 @@ const run = async () => {
       .map((page) => {
         const name =
           page.bookname ?? page.bookName ?? page.file?.frontmatter?.bookName ?? page.file?.name ?? "Book";
+        const fileMtime = toMs(page.file?.mtime);
         return {
           name,
           totalChapters: parseChapterCount(page.totalchapters ?? page.totalChapters),
           path: page.file?.path,
           slug: slugify(name),
+          fileMtime,
+          lastActivityMs: fileMtime,
         };
       })
       .array()
@@ -264,12 +284,18 @@ const run = async () => {
       book.readChapters = chapters.length;
       const review = parseReviewSection(content);
       book.review = review;
+      const latestChapterMs = chapters.reduce((max, chapter) => {
+        const ms = toMs(chapter.finished);
+        return ms > max ? ms : max;
+      }, 0);
+      book.lastActivityMs = latestChapterMs || book.fileMtime || 0;
       bookCache.set(book.path, { content, chapters, review });
     } catch (error) {
       console.warn("Could not load book note:", book.path, error);
       book.chapters = [];
       book.readChapters = 0;
       book.review = "";
+      book.lastActivityMs = book.fileMtime || 0;
       bookCache.set(book.path, { content: "", chapters: [], review: "" });
     }
   };
@@ -366,12 +392,18 @@ const run = async () => {
     if (total === 0) return false;
     return (book.readChapters ?? 0) >= total;
   };
+  const getBookRecency = (book) => (Number.isFinite(book?.lastActivityMs) ? book.lastActivityMs : 0);
   const sortBooks = () => {
     books.sort((a, b) => {
       const completeA = isBookCompleted(a);
       const completeB = isBookCompleted(b);
       if (completeA !== completeB) {
         return completeA ? 1 : -1;
+      }
+      const recentA = getBookRecency(a);
+      const recentB = getBookRecency(b);
+      if (recentA !== recentB) {
+        return recentB - recentA;
       }
       return a.name.localeCompare(b.name);
     });
@@ -570,7 +602,12 @@ const run = async () => {
     });
   };
 
+  const sortStandaloneEntries = () => {
+    standaloneEntries.sort((a, b) => (b.ms || 0) - (a.ms || 0));
+  };
+
   const renderStandaloneEntries = () => {
+    sortStandaloneEntries();
     standaloneListContainer.innerHTML = "";
     if (standaloneEntries.length === 0) {
       standaloneListContainer.createEl("p", { text: t("noStandalone") });
@@ -708,6 +745,7 @@ const run = async () => {
     book.chapters = updatedChapters;
     book.readChapters = updatedChapters.length;
     book.review = currentReview;
+    book.lastActivityMs = toMs(iso);
     await incrementBooksXp();
     return nextChapter;
   };
@@ -887,12 +925,15 @@ totalChapters: ${totalChapters}
 
 `;
       await app.vault.create(targetPath, content);
+      const creationMs = Date.now();
       const newBook = {
         name,
         totalChapters,
         path: targetPath,
         slug,
         review: "",
+        fileMtime: creationMs,
+        lastActivityMs: creationMs,
       };
       books.push(newBook);
       sortBooks();
