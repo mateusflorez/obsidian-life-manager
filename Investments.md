@@ -42,6 +42,8 @@ const run = async () => {
       totalInvested: "Total invested:",
       lastContribution: "Last contribution:",
       onDate: ({ date }) => `on ${date}`,
+      changePercent: ({ percent }) =>
+        `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}% vs previous total`,
       newTotalPlaceholder: ({ prefix }) => `New total value (${prefix})`,
       optionalTagPlaceholder: "Optional tag (e.g., bonus)",
       addContribution: "Add contribution",
@@ -50,6 +52,7 @@ const run = async () => {
       saving: "Saving...",
       contributionAdded: "Contribution added! Reload the view to see the result.",
       couldNotSave: ({ reason }) => `Could not save the contribution (${reason}).`,
+      changePercentShort: ({ percent }) => `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`,
     },
     pt: {
       noInvestments: "❌ Nenhum investimento encontrado. Crie notas em `investments/`.",
@@ -58,6 +61,8 @@ const run = async () => {
       totalInvested: "Total investido:",
       lastContribution: "Último aporte:",
       onDate: ({ date }) => `em ${date}`,
+      changePercent: ({ percent }) =>
+        `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}% em relação ao total anterior`,
       newTotalPlaceholder: ({ prefix }) => `Novo valor total (${prefix})`,
       optionalTagPlaceholder: "Tag opcional (ex.: bônus)",
       addContribution: "Adicionar aporte",
@@ -66,6 +71,7 @@ const run = async () => {
       saving: "Salvando...",
       contributionAdded: "Aporte registrado! Recarregue para ver o resultado.",
       couldNotSave: ({ reason }) => `Não foi possível salvar o aporte (${reason}).`,
+      changePercentShort: ({ percent }) => `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`,
     },
   };
 
@@ -200,8 +206,14 @@ const run = async () => {
   const investments = [];
   for (const page of pages) {
     const content = await dv.io.load(page.file.path);
-    const movements = parseMovements(content);
-    const total = movements.reduce((sum, move) => sum + move.amount, 0);
+    const movementsRaw = parseMovements(content);
+    let runningTotal = 0;
+    const movements = movementsRaw.map((move) => {
+      const previousTotal = runningTotal;
+      runningTotal += move.amount;
+      return { ...move, previousTotal, newTotal: runningTotal };
+    });
+    const total = runningTotal;
     investments.push({ page, movements, total });
   }
 
@@ -322,8 +334,15 @@ const run = async () => {
       .filter((m) => m.date)
       .sort((a, b) => b.date.valueOf() - a.date.valueOf())[0];
     if (lastMove) {
+      const previousTotal = lastMove.previousTotal ?? inv.total - lastMove.amount;
+      const percentChange =
+        Math.abs(previousTotal) > 0.00001
+          ? (lastMove.amount / previousTotal) * 100
+          : null;
+      const changeText =
+        percentChange !== null ? ` (${t("changePercent", { percent: percentChange })})` : "";
       card.createEl("p", {
-        text: `${t("lastContribution")} ${formatCurrency(lastMove.amount)} ${t("onDate", { date: lastMove.date.format("DD/MM/YYYY") })}`,
+        text: `${t("lastContribution")} ${formatCurrency(lastMove.amount)} ${t("onDate", { date: lastMove.date.format("DD/MM/YYYY") })}${changeText}`,
       });
     }
 
@@ -336,7 +355,13 @@ const run = async () => {
       .forEach((move) => {
         const li = list.createEl("li");
         const dateStr = move.date ? move.date.format("DD/MM/YYYY") : "n/a";
-        li.textContent = `${formatCurrency(move.amount)} • ${dateStr}`;
+        const percentChange =
+          Math.abs(move.previousTotal) > 0.00001
+            ? (move.amount / move.previousTotal) * 100
+            : null;
+        const changeSuffix =
+          percentChange !== null ? ` (${t("changePercentShort", { percent: percentChange })})` : "";
+        li.textContent = `${formatCurrency(move.amount)}${changeSuffix} • ${dateStr}`;
       });
 
     const form = card.createEl("form");
